@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-[RequireComponent(typeof(EventSystem))]
+[RequireComponent(typeof(EventTrigger))]
 public class Block : MonoBehaviour
 {
     public Sprite blockImage;
