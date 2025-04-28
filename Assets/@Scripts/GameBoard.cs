@@ -120,7 +120,7 @@ public class GameBoard : MonoBehaviour
                 // 만약 3매치가 없으면, 두 블록 다시 제자리로
                 if (matches.Count == 0)
                 {
-                    StartCoroutine(CoSwapBlocks(_blockDictionary[go], _blockDictionary[MouseData.StartBlock]));
+                    yield return StartCoroutine(CoSwapBlocks(_blockDictionary[go], _blockDictionary[MouseData.StartBlock]));
                 }
                 else
                 {
@@ -276,7 +276,7 @@ public class GameBoard : MonoBehaviour
         }
     }
 
-    void MakeBlocks()
+    IEnumerator MakeBlocks()
     {
         //for (int i = 0; i < _blocks.Length; i++)
         //{
@@ -286,11 +286,11 @@ public class GameBoard : MonoBehaviour
 
         for (int j = 0; j < _numOfColumn; j++)
         {
-            CheckAndSupplyBlocksToColumn(j);
+            yield return StartCoroutine(CheckAndSupplyBlocksToColumn(j));
         }
     }
 
-    void CheckAndSupplyBlocksToColumn(int idx)
+    IEnumerator CheckAndSupplyBlocksToColumn(int idx)
     {
         int countEmpty = 0;
         // 새로 생성될 블록을 포함하여 밑으로 이동될 블록들
@@ -321,34 +321,44 @@ public class GameBoard : MonoBehaviour
             movingBlocks.Add(block.GetComponent<Block>());
         }
         // 블록들 밑으로 내려주기
-        for (int i = _numOfColumn - 1; i >= 0; i--)
+        int len = movingBlocks.Count;
+        for (int i = 0; i < len; i++)
         {
-            StartCoroutine(CoMoveBlock(movingBlocks[i], i, idx));
+            yield return StartCoroutine(CoMoveBlock(movingBlocks[i], len - 1 - i, idx));
         }
+        for(int i=0;i<len;i++)
+        {
+            Destroy(movingBlocks[i].gameObject);
+        }
+        movingBlocks.Clear();
     }
 
     IEnumerator CoMoveBlock(Block moveBlock, int dstX, int dstY)
     {
         if (moveBlock == _blocks[dstX, dstY])
             yield return null;
-        // 출발 블록 스프라이트 저장
-        Sprite startImage = moveBlock.BlockImage.sprite;
-        GameObject tmpBlock = new GameObject();
-        tmpBlock.transform.SetParent(transform);
-        RectTransform rect = tmpBlock.AddComponent<RectTransform>();
-        rect.sizeDelta = _size;
-        rect.localScale = Vector3.one;
-        rect.localEulerAngles = Vector3.zero;
-        rect.localPosition = moveBlock.transform.localPosition;
-
-        moveBlock.ClearBlock();
-
-        while (Vector3.Distance(tmpBlock.transform.localPosition, moveBlock.transform.localPosition) > 5)
+        else
         {
-            tmpBlock.transform.localPosition = Vector3.Lerp(tmpBlock.transform.localPosition, moveBlock.transform.localPosition, Time.deltaTime * 5f);
-            yield return null;
+            // 출발 블록 스프라이트 저장
+            Sprite startImage = moveBlock.BlockImage.sprite;
+            GameObject tmpBlock = new GameObject();
+            tmpBlock.transform.SetParent(transform);
+            RectTransform rect = tmpBlock.AddComponent<RectTransform>();
+            rect.sizeDelta = _size;
+            rect.localScale = Vector3.one;
+            rect.localEulerAngles = Vector3.zero;
+            rect.localPosition = moveBlock.transform.localPosition;
+
+            moveBlock.ClearBlock();
+
+            while (Vector3.Distance(tmpBlock.transform.localPosition, _blocks[dstX, dstY].transform.localPosition) > 5)
+            {
+                tmpBlock.transform.localPosition = Vector3.Lerp(tmpBlock.transform.localPosition, _blocks[dstX, dstY].transform.localPosition, Time.deltaTime * 5f);
+                yield return null;
+            }
+            Destroy(tmpBlock);
+            _blocks[dstX, dstY].UpdateBlockImage(startImage);
         }
-        _blocks[dstX, dstY].UpdateBlockImage(startImage);
     }
 
     #region Test Code
@@ -378,7 +388,7 @@ public class GameBoard : MonoBehaviour
 
     public void OnMakeButtonClick()
     {
-        MakeBlocks();
+        StartCoroutine(MakeBlocks());
     }
     #endregion
 }
