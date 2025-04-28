@@ -6,26 +6,26 @@ using UnityEngine.UI;
 public class Block : MonoBehaviour
 {
     //public Sprite blockImage;
-    Image _blockImage;
+    public Image BlockImage;
 
     public bool IsEmpty
     {
-        get { return _blockImage.sprite == null; }
+        get { return BlockImage.sprite == null; }
     }
 
     void Start()
     {
-        _blockImage = GetComponent<Image>();
+        BlockImage = GetComponent<Image>();
     }
 
     public void ClearBlock()
     {
-        _blockImage.sprite = null;
+        BlockImage.sprite = null;
     }
 
-    public void MakeBlock(Sprite sprite)
+    public void UpdateBlockImage(Sprite sprite)
     {
-        _blockImage.sprite = sprite;
+        BlockImage.sprite = sprite;
     }
 
 }
