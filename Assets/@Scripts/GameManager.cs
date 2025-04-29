@@ -10,7 +10,23 @@ public class GameManager : MonoBehaviour
         get
         {
             if (instance == null)
-                instance = new GameManager();
+            {
+                GameObject go = GameObject.Find("@Managers");
+                if (go == null)
+                {
+                    go = new GameObject("@Managers");
+                    DontDestroyOnLoad(go);
+                }
+
+                instance = FindAnyObjectByType<GameManager>();
+                if (instance == null)
+                {
+                    GameObject gameManager = new GameObject("GameManager");
+                    GameManager comp = gameManager.AddComponent<GameManager>();
+                    gameManager.transform.SetParent(go.transform);
+                    instance = comp;
+                }
+            }
             return instance;
         }
     }
@@ -19,12 +35,11 @@ public class GameManager : MonoBehaviour
     public int Score
     {
         get { return _score; }
-        set { _score = value; }
-    }
-
-    void Start()
-    {
-
+        set
+        {
+            _score = value;
+            UI_Game.ScoreChangeAction?.Invoke();
+        }
     }
 
     void Initiate()
