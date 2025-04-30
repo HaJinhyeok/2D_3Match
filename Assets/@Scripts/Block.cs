@@ -5,27 +5,36 @@ using UnityEngine.UI;
 [RequireComponent(typeof(EventTrigger))]
 public class Block : MonoBehaviour
 {
-    //public Sprite blockImage;
     public Image BlockImage;
 
     public bool IsEmpty
     {
-        get { return BlockImage.sprite == null; }
+        get { return BlockImage.color.a <= 0.1f; }
     }
 
     void Start()
     {
-        BlockImage = GetComponent<Image>();
+        //BlockImage = GetComponentsInChildren<Image>()[1];
     }
 
-    public void ClearBlock()
+    public void TurnOffBlock()
     {
-        BlockImage.sprite = null;
+        Color color = BlockImage.color;
+        color.a = 0f;
+        BlockImage.color = color;
+    }
+
+    public void TurnOnBlock()
+    {
+        Color color = BlockImage.color;
+        color.a = 1f;
+        BlockImage.color = color;
     }
 
     public void UpdateBlockImage(Sprite sprite)
     {
         BlockImage.sprite = sprite;
+        TurnOnBlock();
     }
 
 }

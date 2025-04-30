@@ -586,13 +586,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbcb555b23242a4488c366fd1f0be8fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Block: {fileID: 7455453046712486812, guid: 4b61367e9fcdd0a46b0f126fe776a381, type: 3}
+  BlockPrefab: {fileID: 7455453046712486812, guid: 4b61367e9fcdd0a46b0f126fe776a381, type: 3}
   BlockImages:
   - {fileID: 21300000, guid: dc9aadb21467fcd47b66103b00a70d33, type: 3}
   - {fileID: 21300000, guid: e2fa977ca6c728b40a19240a15abf788, type: 3}
   - {fileID: 21300000, guid: 4d0ac3a9f558bd34aab2c27b95811792, type: 3}
   - {fileID: 21300000, guid: d1018a17ad97e9e42a96ff3fae591104, type: 3}
   - {fileID: 21300000, guid: 7c07895499e0fc540886594ede45935f, type: 3}
+  BlockDefaultImage: {fileID: 21300000, guid: eacf780d8cc908e4e814340733a2ebc0, type: 3}
 --- !u!114 &1517308220
 MonoBehaviour:
   m_ObjectHideFlags: 0

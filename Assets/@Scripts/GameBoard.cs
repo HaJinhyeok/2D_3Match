@@ -13,7 +13,7 @@ public static class MouseData
 
 public class GameBoard : MonoBehaviour
 {
-    public GameObject Block;
+    public GameObject BlockPrefab;
     public Sprite[] BlockImages = new Sprite[5];
 
     //public Button TestButton;
@@ -23,9 +23,9 @@ public class GameBoard : MonoBehaviour
     Dictionary<GameObject, Block> _blockDictionary = new Dictionary<GameObject, Block>();
 
     Vector2 _start = new Vector2(-455f, 455f);
-    Vector2 _size = new Vector2(125f, 125f);
-    Vector2 _space = new Vector2(5f, 5f);
-    const int _numOfColumn = 8;
+    Vector2 _size = new Vector2(150f, 150f);
+    Vector2 _space = new Vector2(0f, 0f);
+    const int _numOfColumn = 7;
     //int _numOfBlock = 64;
     Block[,] _blocks = new Block[_numOfColumn, _numOfColumn];
 
@@ -55,7 +55,7 @@ public class GameBoard : MonoBehaviour
         {
             x = i / _numOfColumn;
             y = i % _numOfColumn;
-            GameObject block = Instantiate(Block, transform);
+            GameObject block = Instantiate(BlockPrefab, transform);
             block.GetComponent<RectTransform>().localPosition = CalculatePosition(i);
             block.AddComponent<EventTrigger>();
             // block에 event 추가
@@ -65,7 +65,7 @@ public class GameBoard : MonoBehaviour
             AddEvent(block, EventTriggerType.PointerEnter, delegate { StartCoroutine(OnEnterBlock(block)); });
 
             // blcok component마다 블록 이미지 5가지 중 하나 랜덤 부여
-            block.GetComponent<Image>().sprite = BlockImages[UnityEngine.Random.Range(0, BlockImages.Length)];
+            block.GetComponent<Block>().UpdateBlockImage(BlockImages[UnityEngine.Random.Range(0, BlockImages.Length)]);
 
             _blocks[x, y] = block.GetComponent<Block>();
             _blockDictionary.Add(block, _blocks[x, y]);
@@ -96,7 +96,7 @@ public class GameBoard : MonoBehaviour
         MouseData.StartBlock = go;
         MouseData.IsDragging = true;
         Vector2 goSize = go.GetComponent<RectTransform>().sizeDelta;
-        Debug.Log($"Block Size: {goSize.x}, {goSize.y}");
+        //Debug.Log($"Block Size: {goSize.x}, {goSize.y}");
     }
 
     void OnEndDrag(GameObject go)
@@ -111,7 +111,9 @@ public class GameBoard : MonoBehaviour
             yield return StartCoroutine(CoSwapBlocks(_blockDictionary[go], _blockDictionary[MouseData.StartBlock]));
             {
                 // 만약 3매치가 없으면(==삭제할게 없으면), 두 블록 다시 제자리로
-                if (!DestroyBlocks())
+                // 교환한 두 블록에 대해서만 검사
+                //if (!DestroyBlocks())
+                if (!DestroyBlocks(_blockDictionary[go], _blockDictionary[MouseData.StartBlock]))
                 {
                     yield return StartCoroutine(CoSwapBlocks(_blockDictionary[go], _blockDictionary[MouseData.StartBlock]));
                 }
@@ -130,14 +132,40 @@ public class GameBoard : MonoBehaviour
     // 발생 시, 해당 블록들의 리스트들을 반환
     public List<List<int>> CheckMatches()
     {
-        bool[] isChecked = new bool[64];
+        //bool[] isChecked = new bool[64];
+        //List<List<int>> matches = new List<List<int>>();
+        //List<int> tmp;
+        //for (int i = 0; i < _blocks.Length; i++)
+        //{
+        //    tmp = CheckMatchFromBlock(i, isChecked);
+        //    if (tmp != null)
+        //        matches.Add(tmp);
+        //}
+        //return matches;
+
         List<List<int>> matches = new List<List<int>>();
-        List<int> tmp;
-        for (int i = 0; i < _blocks.Length; i++)
+        List<List<int>> tmp;
+        for (int i = 0; i < _numOfColumn; i++)
         {
-            tmp = CheckMatchFromBlock(i, isChecked);
-            if (tmp != null)
-                matches.Add(tmp);
+            tmp = CheckingRowOrColumn(i, true);
+            if (tmp.Count > 0)
+            {
+                for (int j = 0; j < tmp.Count; j++)
+                {
+                    matches.Add(tmp[j]);
+                    //PrintList(tmp[j]);
+                }
+            }
+
+            tmp = CheckingRowOrColumn(i, false);
+            if (tmp.Count > 0)
+            {
+                for (int j = 0; j < tmp.Count; j++)
+                {
+                    matches.Add(tmp[j]);
+                    //PrintList(tmp[j]);
+                }
+            }
         }
         return matches;
     }
@@ -182,6 +210,82 @@ public class GameBoard : MonoBehaviour
                 CheckSameBlock(matchBlocks, idx + _numOfColumn, sprite, isChecked);
         }
 
+    }
+
+    // idx번째 row 혹은 column 조사
+    List<List<int>> CheckingRowOrColumn(int idx, bool flag)
+    {
+        List<List<int>> blocksOfLine = new List<List<int>>();
+        List<int> blocks = new List<int>();
+        Sprite currentSprite;
+        // flag == true이면 idx번째 column 조사
+        if (flag)
+        {
+            currentSprite = _blocks[0, idx].BlockImage.sprite;
+            blocks.Add(idx);
+            for (int i = 1; i < _numOfColumn; i++)
+            {
+                // 다음 블록의 이미지가 다른 거면
+                if (_blocks[i, idx].BlockImage.sprite != currentSprite)
+                {
+                    // 다음 블록의 이미지를 기준 이미지로 바꾸고
+                    currentSprite = _blocks[i, idx].BlockImage.sprite;
+                    if (blocks.Count >= 3)
+                    {
+                        List<int> tmp = new List<int>(blocks);
+                        blocksOfLine.Add(tmp);
+                    }
+                    blocks.Clear();
+                    blocks.Add(i * _numOfColumn + idx);
+                }
+                // 같은 이미지면 조사 중인 리스트에 넣고 진행
+                else
+                {
+                    blocks.Add(i * _numOfColumn + idx);
+                }
+            }
+            if (blocks.Count >= 3)
+            {
+                List<int> tmp = new List<int>(blocks);
+                blocksOfLine.Add(tmp);
+            }
+            //return blocksOfLine.Count > 0 ? blocksOfLine : null;
+            return blocksOfLine;
+        }
+        // flag == false이면 idx번째 row 조사
+        else
+        {
+            currentSprite = _blocks[idx, 0].BlockImage.sprite;
+            blocks.Add(idx * _numOfColumn);
+            for (int i = 1; i < _numOfColumn; i++)
+            {
+                // 다음 블록의 이미지가 다른 거면
+                if (_blocks[idx, i].BlockImage.sprite != currentSprite)
+                {
+                    // 다음 블록의 이미지를 기준 이미지로 바꾸고
+                    currentSprite = _blocks[idx, i].BlockImage.sprite;
+                    if (blocks.Count >= 3)
+                    {
+                        List<int> tmp = new List<int>(blocks);
+                        blocksOfLine.Add(tmp);
+                    }
+                    blocks.Clear();
+                    blocks.Add(idx * _numOfColumn + i);
+                }
+                // 같은 이미지면 조사 중인 리스트에 넣고 진행
+                else
+                {
+                    blocks.Add(idx * _numOfColumn + i);
+                }
+            }
+            if (blocks.Count >= 3)
+            {
+                List<int> tmp = new List<int>(blocks);
+                blocksOfLine.Add(tmp);
+            }
+            //return blocksOfLine.Count > 0 ? blocksOfLine : null;
+            return blocksOfLine;
+        }
     }
     #endregion
 
@@ -229,10 +333,10 @@ public class GameBoard : MonoBehaviour
         image2.sprite = blockImage2;
 
         // 각 블록의 이미지 제거
-        //blockA.ClearBlock();
-        //blockB.ClearBlock();
-        blockA.gameObject.SetActive(false);
-        blockB.gameObject.SetActive(false);
+        blockA.TurnOffBlock();
+        blockB.TurnOffBlock();
+        //blockA.gameObject.SetActive(false);
+        //blockB.gameObject.SetActive(false);
 
         // 서로의 위치로 이미지가 이동할 때까지 yield return null
         Vector3 posA = block1.transform.localPosition;
@@ -275,7 +379,7 @@ public class GameBoard : MonoBehaviour
     {
         foreach (int idx in indices)
         {
-            _blocks[idx / _numOfColumn, idx % _numOfColumn].ClearBlock();
+            _blocks[idx / _numOfColumn, idx % _numOfColumn].TurnOffBlock();
             GameManager.Instance.Score++;
         }
     }
@@ -284,6 +388,60 @@ public class GameBoard : MonoBehaviour
     {
         List<List<int>> matches = CheckMatches();
         // 삭제할 게 없으면 false
+        if (matches.Count == 0)
+            return false;
+        foreach (List<int> matchBlocks in matches)
+        {
+            DestroyMatchBlocks(matchBlocks);
+        }
+        return true;
+    }
+
+    bool DestroyBlocks(Block block1, Block block2)
+    {
+        List<List<int>> matches = new List<List<int>>();
+        List<List<int>> tmp;
+        int num1 = int.Parse(block1.name.Substring(5));
+        int num2 = int.Parse(block2.name.Substring(5));
+        tmp = CheckingRowOrColumn(num1 % _numOfColumn, true);
+        if (tmp.Count > 0)
+        {
+            for (int j = 0; j < tmp.Count; j++)
+            {
+                matches.Add(tmp[j]);
+            }
+        }
+
+        tmp = CheckingRowOrColumn(num1 / _numOfColumn, false);
+        if (tmp.Count > 0)
+        {
+            for (int j = 0; j < tmp.Count; j++)
+            {
+                matches.Add(tmp[j]);
+                //PrintList(tmp[j]);
+            }
+        }
+
+        tmp = CheckingRowOrColumn(num2 % _numOfColumn, true);
+        if (tmp.Count > 0)
+        {
+            for (int j = 0; j < tmp.Count; j++)
+            {
+                matches.Add(tmp[j]);
+                //PrintList(tmp[j]);
+            }
+        }
+
+        tmp = CheckingRowOrColumn(num2 / _numOfColumn, false);
+        if (tmp.Count > 0)
+        {
+            for (int j = 0; j < tmp.Count; j++)
+            {
+                matches.Add(tmp[j]);
+                //PrintList(tmp[j]);
+            }
+        }
+
         if (matches.Count == 0)
             return false;
         foreach (List<int> matchBlocks in matches)
@@ -332,7 +490,7 @@ public class GameBoard : MonoBehaviour
                         Image image1 = block.AddComponent<Image>();
                         image1.sprite = _blocks[i, j].BlockImage.sprite;
                         movingBlocks[j].Add(block);
-                        _blocks[i, j].ClearBlock();
+                        _blocks[i, j].TurnOffBlock();
                     }
                 }
             }
@@ -358,7 +516,7 @@ public class GameBoard : MonoBehaviour
             }
         }
         int sumOfCountEmpty = 0;
-        for(int i=0;i<countEmpty.Length;i++)
+        for (int i = 0; i < countEmpty.Length; i++)
         {
             sumOfCountEmpty += countEmpty[i];
         }
@@ -371,7 +529,7 @@ public class GameBoard : MonoBehaviour
         {
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
-        }            
+        }
     }
 
     IEnumerator CoMoveBlocks(List<List<GameObject>> movingBlocks)
@@ -438,6 +596,17 @@ public class GameBoard : MonoBehaviour
     public void OnMakeButtonClick()
     {
         MakeBlocks();
+    }
+
+    public void PrintList(List<int> list)
+    {
+        string print = "Match: ";
+        for (int i = 0; i < list.Count; i++)
+        {
+            print += list[i].ToString();
+            print += " ";
+        }
+        Debug.Log(print);
     }
     #endregion
 }
