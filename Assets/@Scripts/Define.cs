@@ -1,5 +1,10 @@
-
-public class Define
+public static class Define
 {
-
+    public enum DataStatus : int
+    {
+        Start,
+        Swap,
+        Destroy,
+        Generate,
+    }
 }

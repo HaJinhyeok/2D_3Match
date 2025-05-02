@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.VFX;
 
 [RequireComponent(typeof(EventTrigger))]
 public class Block : MonoBehaviour
 {
     public Image BlockImage;
+    public VisualEffect BlockCrashEffect;
 
     public bool IsEmpty
     {
@@ -14,7 +16,7 @@ public class Block : MonoBehaviour
 
     void Start()
     {
-        //BlockImage = GetComponentsInChildren<Image>()[1];
+        // BlockCrashEffect = GetComponent<VisualEffect>();
     }
 
     public void TurnOffBlock()
@@ -37,4 +39,16 @@ public class Block : MonoBehaviour
         TurnOnBlock();
     }
 
+    public void BlockCrash()
+    {
+        BlockCrashEffect.transform.position = transform.position;
+        BlockCrashEffect.Play();
+        //BlockCrashEffect.SendEvent("OnPlay");
+    }
+
+    public void SetBlockImagePadding(Vector2 padding)
+    {
+        RectTransform rect = BlockImage.GetComponent<RectTransform>();
+        rect.sizeDelta = -2 * padding;
+    }
 }
