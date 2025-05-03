@@ -130,8 +130,9 @@ GameObject:
   - component: {fileID: 357694823}
   - component: {fileID: 357694825}
   - component: {fileID: 357694824}
+  - component: {fileID: 357694826}
   m_Layer: 5
-  m_Name: EnemyBoard
+  m_Name: RivalBoard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -194,6 +195,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 357694822}
   m_CullTransparentMesh: 1
+--- !u!114 &357694826
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357694822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e2d268910997a94d90b4f9bcc592375, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -341,6 +354,7 @@ GameObject:
   m_Component:
   - component: {fileID: 552939074}
   - component: {fileID: 552939073}
+  - component: {fileID: 552939075}
   m_Layer: 0
   m_Name: Client
   m_TagString: Untagged
@@ -375,6 +389,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &552939075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 552939072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f595b9d583786c74a91efcbfb26d2388, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -668,7 +694,7 @@ GameObject:
   - component: {fileID: 1517308220}
   - component: {fileID: 1517308219}
   m_Layer: 5
-  m_Name: Board
+  m_Name: PlayerBoard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -706,15 +732,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbcb555b23242a4488c366fd1f0be8fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  BlockPrefab: {fileID: 7455453046712486812, guid: 4b61367e9fcdd0a46b0f126fe776a381, type: 3}
-  BlockImages:
-  - {fileID: 21300000, guid: c6e4c73e4f0bbd64f99bfcc24792c180, type: 3}
-  - {fileID: 21300000, guid: d1ac541a1842ef548a5d15a228ee8ba4, type: 3}
-  - {fileID: 21300000, guid: 7518387ad455e8b458ddfbfd37f48fe1, type: 3}
-  - {fileID: 21300000, guid: 1f15c143b824d7f4fbc89bc4a5b516b9, type: 3}
-  - {fileID: 21300000, guid: 57c08c7217d26554d943f56ba427fa62, type: 3}
-  - {fileID: 21300000, guid: 30222cc445fa3fb4cbad6270bc9444c3, type: 3}
-  - {fileID: 21300000, guid: 066aa5eb012064648a9a0616f7ae0806, type: 3}
   Client: {fileID: 552939073}
 --- !u!114 &1517308220
 MonoBehaviour:

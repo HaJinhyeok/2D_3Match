@@ -5,6 +5,9 @@ public class GameManager : MonoBehaviour
     private static GameManager instance = null;
     private GameManager() { }
 
+    public GameObject BlockPrefab;
+    public Sprite[] BlockImages;
+
     public static GameManager Instance
     {
         get
@@ -42,9 +45,16 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    void Initiate()
+    void Awake()
     {
         _score = 0;
+        LoadResources();
+    }
+
+    void LoadResources()
+    {
+        BlockPrefab = Resources.Load<GameObject>(Define.BlockPath);
+        BlockImages = Resources.LoadAll<Sprite>(Define.BlockImagePath);
     }
 
 }

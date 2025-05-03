@@ -4,6 +4,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
+using static Unity.Collections.AllocatorManager;
+using System.Linq;
 
 public static class MouseData
 {
@@ -11,37 +13,21 @@ public static class MouseData
     public static GameObject StartBlock;        // 드래그 시작한 위치의 블록 
 }
 
-public class GameBoard : MonoBehaviour
+public class PlayerBoard : Board
 {
-    public GameObject BlockPrefab;
-    public Sprite[] BlockImages;
+    //public GameObject BlockPrefab;
+    //public Sprite[] BlockImages;
     public Client Client;
 
     //public Button TestButton;
     //public Button RemoveButton;
     //public Button MakeButton;
 
-    Dictionary<GameObject, Block> _blockDictionary = new Dictionary<GameObject, Block>();
-    Block[,] _blocks = new Block[_numOfColumn, _numOfColumn];
-
     bool _isBlockMoving = false;
 
-    Vector2 _start;
-    Vector2 _boardSize;
-    Vector2 _blockSize;
-    Vector2 _size;
-    Vector2 _space;
-    const int _numOfColumn = 7;
-
-    void Start()
+    protected override void Start()
     {
-        _boardSize = GetComponent<RectTransform>().sizeDelta;
-        _blockSize = _boardSize / _numOfColumn;
-        _space = _blockSize / 10f;
-        _size = _blockSize - _space;
-        _start = new Vector2(-_boardSize.x / 2 + _blockSize.x / 2, _boardSize.x / 2 - _blockSize.x / 2);
-
-
+        base.Start();
         CreateRandomBlocks();
         Invoke("MakeBlocks", Time.deltaTime);
         MouseData.IsDragging = false;
@@ -52,24 +38,18 @@ public class GameBoard : MonoBehaviour
         //MakeButton.onClick.AddListener(OnMakeButtonClick);
     }
 
-    Vector2 CalculatePosition(int idx)
-    {
-        float posX = _start.x + (_size.x + _space.x) * (idx % _numOfColumn);
-        float posY = _start.y - (_size.y + _space.y) * (idx / _numOfColumn);
-        return new Vector2(posX, posY);
-    }
 
     void CreateRandomBlocks()
     {
         // IOCP 서버 전달용 string(임시)
         int[,] blockStatus = new int[_numOfColumn, _numOfColumn];
-        string blockStatusStr = "";
+        string clientData = $"{(int)Define.DataStatus.Start}\n";
         int x, y;
         for (int i = 0; i < _blocks.Length; i++)
         {
             x = i / _numOfColumn;
             y = i % _numOfColumn;
-            GameObject block = Instantiate(BlockPrefab, transform);
+            GameObject block = Instantiate(GameManager.Instance.BlockPrefab, transform);
             RectTransform rect = block.GetComponent<RectTransform>();
             rect.localPosition = CalculatePosition(i);
             rect.sizeDelta = _blockSize;
@@ -81,8 +61,8 @@ public class GameBoard : MonoBehaviour
             AddEvent(block, EventTriggerType.PointerEnter, delegate { StartCoroutine(OnEnterBlock(block)); });
 
             // blcok component마다 블록 이미지 5가지 중 하나 랜덤 부여
-            int rnd = UnityEngine.Random.Range(0, BlockImages.Length);
-            block.GetComponent<Block>().UpdateBlockImage(BlockImages[rnd]);
+            int rnd = UnityEngine.Random.Range(0, GameManager.Instance.BlockImages.Length);
+            block.GetComponent<Block>().UpdateBlockImage(GameManager.Instance.BlockImages[rnd]);
 
             _blocks[x, y] = block.GetComponent<Block>();
             _blocks[x, y].SetBlockImagePadding(_space);
@@ -90,12 +70,12 @@ public class GameBoard : MonoBehaviour
             block.name = $"Block{i}";
 
             blockStatus[x, y] = rnd;
-            blockStatusStr += rnd.ToString();
+            clientData += rnd.ToString();
             if (y == _numOfColumn - 1)
-                blockStatusStr += "\n";
-            else blockStatusStr += " ";
+                clientData += "\n";
+            else clientData += " ";
         }
-        Client.SendMessageToServer(blockStatusStr);
+        Client.SendMessageToServer(clientData);
 
     }
 
@@ -123,7 +103,6 @@ public class GameBoard : MonoBehaviour
         MouseData.StartBlock = go;
         MouseData.IsDragging = true;
         Vector2 goSize = go.GetComponent<RectTransform>().sizeDelta;
-        //Debug.Log($"Block Size: {goSize.x}, {goSize.y}");
     }
 
     void OnEndDrag(GameObject go)
@@ -137,30 +116,30 @@ public class GameBoard : MonoBehaviour
         {
             Block startBlock = _blockDictionary[MouseData.StartBlock];
             Block enterBlock = _blockDictionary[go];
+            Vector2 localPosDifference = enterBlock.transform.localPosition - startBlock.transform.localPosition;
             // 두 블록이 대각선 위치이면 이동 x
-            if (Mathf.Abs(enterBlock.transform.position.x - startBlock.transform.position.x) > _size.x && Mathf.Abs(enterBlock.transform.position.y - startBlock.transform.position.y) > _size.y)
+            if (Mathf.Abs(localPosDifference.x) > _size.x - _space.x && Mathf.Abs(localPosDifference.y) > _size.y - _space.y)
             {
                 Debug.Log("이동 불가");
+                MouseData.IsDragging = false;
             }
             else
             {
                 _isBlockMoving = true;
-                Client.SendMessageToServer($"Start: {startBlock.gameObject.name}, Eneter: {enterBlock.gameObject.name}");
                 yield return StartCoroutine(CoSwapBlocks(enterBlock, startBlock));
                 {
                     // 만약 3매치가 없으면(==삭제할게 없으면), 두 블록 다시 제자리로
                     // 교환한 두 블록에 대해서만 검사
-                    //if (!DestroyBlocks())
-                    if (!DestroySwapBlocks(enterBlock, startBlock))
+                    if (!DestroySwapBlocks(startBlock, enterBlock))
                     {
                         yield return StartCoroutine(CoSwapBlocks(enterBlock, startBlock));
+                        _isBlockMoving = false;
                     }
                     else
                     {
                         MakeBlocks();
                     }
                 }
-                _isBlockMoving = false;
             }
 
         }
@@ -332,7 +311,7 @@ public class GameBoard : MonoBehaviour
 
     #region Block Move & Generate & Destroy Method
 
-    IEnumerator CoSwapBlocks(Block blockA, Block blockB)
+    protected IEnumerator CoSwapBlocks(Block blockA, Block blockB)
     {
         if (blockA == blockB)
             yield return null;
@@ -345,61 +324,10 @@ public class GameBoard : MonoBehaviour
         // 두 블록의 위치가 바뀌는 애니메이션을 어떻게?
         // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
         // 이때, 움직임은 코루틴으로 표현
+        string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
+        Client.SendMessageToServer(clientData);
         yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
     }
-
-    IEnumerator CoSwapBlockImages(Block blockA, Block blockB)
-    {
-        Sprite blockImage1 = blockA.BlockImage.sprite;
-        Sprite blockImage2 = blockB.BlockImage.sprite;
-
-        // 각 블록 위치에 이미지 오브젝트 생성
-        GameObject block1 = new GameObject("image1");
-        block1.transform.SetParent(transform);
-        RectTransform rect1 = block1.AddComponent<RectTransform>();
-        //rect1.sizeDelta = _size - _space;
-        rect1.sizeDelta = _blockSize;
-        rect1.localScale = Vector3.one;
-        rect1.localEulerAngles = Vector3.zero;
-        rect1.localPosition = blockA.transform.localPosition;
-        Image image1 = block1.AddComponent<Image>();
-        image1.sprite = blockImage1;
-
-        GameObject block2 = new GameObject("image2");
-        block2.transform.SetParent(transform);
-        RectTransform rect2 = block2.AddComponent<RectTransform>();
-        //rect2.sizeDelta = _size - _space;
-        rect2.sizeDelta = _blockSize;
-        rect2.localScale = Vector3.one;
-        rect2.localPosition = blockB.transform.localPosition;
-        Image image2 = block2.AddComponent<Image>();
-        image2.sprite = blockImage2;
-
-        // 각 블록의 이미지 제거
-        blockA.TurnOffBlock();
-        blockB.TurnOffBlock();
-
-        // 서로의 위치로 이미지가 이동할 때까지 yield return null
-        Vector3 posA = block1.transform.localPosition;
-        Vector3 posB = block2.transform.localPosition;
-        while (Vector3.Distance(block1.transform.localPosition, posB) > 5f)
-        {
-            block1.transform.localPosition = Vector3.Lerp(block1.transform.localPosition, posB, Time.deltaTime * 5);
-            block2.transform.localPosition = Vector3.Lerp(block2.transform.localPosition, posA, Time.deltaTime * 5);
-            yield return null;
-        }
-
-        Destroy(block1);
-        Destroy(block2);
-        // 끝나면 두 블록의 이미지 교체
-        Sprite tmp = blockImage1;
-        blockA.UpdateBlockImage(blockImage2);
-        blockB.UpdateBlockImage(tmp);
-        blockA.TurnOnBlock();
-        blockB.TurnOnBlock();
-    }
-    // 3-match된 블록들 제거
-    // 블록 제거 시, 해당 블록 위에 있던 블록들 아래로 내려오고 빈칸은 새로 생성된 블록으로 채우기
 
     IEnumerator CoMakeBlocks()
     {
@@ -408,6 +336,7 @@ public class GameBoard : MonoBehaviour
             yield return StartCoroutine(CoCheckAndSupplyBlocksToColumn());
             yield return new WaitForSeconds(0.5f);
         } while (DestroyBlocks());
+        _isBlockMoving = false;
     }
 
     void MakeBlocks()
@@ -415,19 +344,8 @@ public class GameBoard : MonoBehaviour
         StartCoroutine(CoMakeBlocks());
     }
 
-    void DestroyMatchBlocks(List<int> indices)
-    {
-        foreach (int idx in indices)
-        {
-            if (!_blocks[idx / _numOfColumn, idx % _numOfColumn].IsEmpty)
-            {
-                _blocks[idx / _numOfColumn, idx % _numOfColumn].TurnOffBlock();
-                _blocks[idx / _numOfColumn, idx % _numOfColumn].BlockCrash();
-                GameManager.Instance.Score++;
-            }
-        }
-    }
-
+    // 3-match된 블록들 제거
+    // 블록 제거 시, 해당 블록 위에 있던 블록들 아래로 내려오고 빈칸은 새로 생성된 블록으로 채우기
     bool DestroyBlocks()
     {
         List<List<int>> matches = CheckMatches();
@@ -436,6 +354,13 @@ public class GameBoard : MonoBehaviour
             return false;
         foreach (List<int> matchBlocks in matches)
         {
+            string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            for (int i = 0; i < matchBlocks.Count; i++)
+            {
+                if (i != 0) clientData += ' ';
+                clientData += matchBlocks[i].ToString();
+            }
+            Client.SendMessageToServer(clientData);
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -490,6 +415,13 @@ public class GameBoard : MonoBehaviour
             return false;
         foreach (List<int> matchBlocks in matches)
         {
+            string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            for (int i = 0; i < matchBlocks.Count; i++)
+            {
+                if (i != 0) clientData += ' ';
+                clientData += matchBlocks[i].ToString();
+            }
+            Client.SendMessageToServer(clientData);
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -501,6 +433,8 @@ public class GameBoard : MonoBehaviour
         bool isEmptyBlockExist = false;
         // 새로 생성될 블록을 포함하여 밑으로 이동될 블록들
         List<List<GameObject>> movingBlocks = new List<List<GameObject>>();
+        string hideBlockData = $"{(int)Define.DataStatus.Hide}\n";
+
         // 각 column에서 어느 자리의 블록이 비었는지 확인
         // 새로 생성해야할 블록 개수 == 빈 블록 개수
         // 해당 열에서 특정 블록을 밑으로 내려주는 함수 필요
@@ -535,6 +469,7 @@ public class GameBoard : MonoBehaviour
                         image1.sprite = _blocks[i, j].BlockImage.sprite;
                         movingBlocks[j].Add(block);
                         _blocks[i, j].TurnOffBlock();
+                        hideBlockData += $"{i},{j} ";
                     }
                 }
             }
@@ -555,7 +490,7 @@ public class GameBoard : MonoBehaviour
                 rect.localEulerAngles = Vector3.zero;
                 rect.localPosition = new Vector3(columnTopBlockPosition.x, columnTopBlockPosition.y + (i + 1) * (_size.y + _space.y), 0);
                 Image image1 = block.AddComponent<Image>();
-                image1.sprite = BlockImages[UnityEngine.Random.Range(0, BlockImages.Length)];
+                image1.sprite = GameManager.Instance.BlockImages[UnityEngine.Random.Range(0, GameManager.Instance.BlockImages.Length)];
                 movingBlocks[j].Add(block);
             }
         }
@@ -571,50 +506,33 @@ public class GameBoard : MonoBehaviour
         }
         else
         {
+            string clientData = $"{(int)Define.DataStatus.Generate}\n";
+            foreach (List<GameObject> gameObjects in movingBlocks)
+            {
+                foreach (GameObject go in gameObjects)
+                {
+                    string name = go.GetComponent<Image>().sprite.name;
+                    Vector2 pos = go.GetComponent<RectTransform>().localPosition;
+                    // 이미지 번호 - 위치 x좌표 - 위치 y좌표
+                    clientData += $"{name[0]} {pos.x} {pos.y}";
+                    // 배열의 마지막 요소를 가리키는 인덱스 표기법
+                    if (go != gameObjects[^1])
+                    {
+                        clientData += ',';
+                    }
+                }
+                if (gameObjects != movingBlocks[^1])
+                {
+                    clientData += '\n';
+                }
+            }
+            Client.SendMessageToServer(hideBlockData);
+            Client.SendMessageToServer(clientData);
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
         }
     }
-
-    IEnumerator CoMoveBlocks(List<List<GameObject>> movingBlocks)
-    {
-        // 가장 많은 블록이 새로 생성된 열을 찾아서 그 블록들이 다 제자리로 갈 때까지 옮김
-        int maxColumn = 0;
-        for (int i = 1; i < _numOfColumn; i++)
-        {
-            maxColumn = (movingBlocks[maxColumn].Count < movingBlocks[i].Count) ? i : maxColumn;
-        }
-        while (Vector3.Distance(movingBlocks[maxColumn][movingBlocks[maxColumn].Count - 1].transform.localPosition, _blocks[0, maxColumn].gameObject.transform.localPosition) > 5f)
-        {
-            for (int j = 0; j < _numOfColumn; j++)
-            {
-                for (int i = 0; i < movingBlocks[j].Count; i++)
-                {
-                    // movingBlocks[j][i] 오브젝트를
-                    // _blocks[movingBlocks[j].count-1-i,j]의 localPosition으로 이동
-                    movingBlocks[j][i].transform.localPosition =
-                        Vector3.Lerp(movingBlocks[j][i].transform.localPosition,
-                        _blocks[movingBlocks[j].Count - 1 - i, j].transform.localPosition,
-                        Time.deltaTime * 5f);
-                }
-            }
-            yield return null;
-        }
-
-        for (int j = 0; j < _numOfColumn; j++)
-        {
-            for (int i = 0; i < movingBlocks[j].Count; i++)
-            {
-                _blocks[movingBlocks[j].Count - 1 - i, j].UpdateBlockImage(movingBlocks[j][i].GetComponent<Image>().sprite);
-                Destroy(movingBlocks[j][i]);
-            }
-        }
-
-        movingBlocks.Clear();
-    }
-
     #endregion
-
 
     #region Test Code
     public void OnTestButtonClick()
