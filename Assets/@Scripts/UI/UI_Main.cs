@@ -1,0 +1,40 @@
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class UI_Main : MonoBehaviour
+{
+    public Button SoloPlayButton;
+    public Button MatchPlayButton;
+    public Button ExitButton;
+
+    public Text ScreenText;
+
+    void Start()
+    {
+        SoloPlayButton.onClick.AddListener(OnSoloPlayButtonClick);
+        MatchPlayButton.onClick.AddListener(OnMatchPlayButton);
+        ExitButton.onClick.AddListener(OnExitButtonClick);
+        ScreenText.text = Screen.width + "x" + Screen.height;
+        Debug.Log(Screen.width + "x" + Screen.height);
+    }
+
+    public void OnSoloPlayButtonClick()
+    {
+        SceneManager.LoadScene(Define.GameScene);
+    }
+
+    public void OnMatchPlayButton()
+    {
+        SceneManager.LoadScene(Define.GameScene);
+    }
+
+    public void OnExitButtonClick()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+}

@@ -54,37 +54,53 @@ public class Client : MonoBehaviour
 
                 string msg = Encoding.UTF8.GetString(buffer, 0, bytes);
                 //Debug.Log($"Received from server: {msg}");
-                switch ((int)msg[0] - 48)
+                int status = (int)msg[0] - 48;
+                // num of dataStatus
+                if(status>=0&&status<5)
                 {
-                    case (int)Define.DataStatus.Start:
-                        ClientReceiveProcessor.Enqueue(() =>
-                        rivalBoard.StartGame(msg.Substring(2)));
-                        
-                        break;
+                    switch (status)
+                    {
+                        case (int)Define.DataStatus.Start:
+                            ClientReceiveProcessor.Enqueue(() =>
+                            rivalBoard.StartGame(msg.Substring(2)));
 
-                    case (int)Define.DataStatus.Swap:
-                        ClientReceiveProcessor.Enqueue(()=>
-                        StartCoroutine(rivalBoard.SwapBlock(msg.Substring(2))));
-                        break;
+                            break;
 
-                    case (int)Define.DataStatus.Destroy:
-                        ClientReceiveProcessor.Enqueue(()=>
-                            rivalBoard.DestroyBlock(msg.Substring(2)));
-                        break;
+                        case (int)Define.DataStatus.Swap:
+                            ClientReceiveProcessor.Enqueue(() =>
+                            StartCoroutine(rivalBoard.SwapBlock(msg.Substring(2))));
+                            break;
 
-                    case (int)Define.DataStatus.Generate:
-                        ClientReceiveProcessor.Enqueue(() =>
-                        rivalBoard.GenerateBlock(msg.Substring(2)));
-                        break;
+                        case (int)Define.DataStatus.Destroy:
+                            ClientReceiveProcessor.Enqueue(() =>
+                                rivalBoard.DestroyBlock(msg.Substring(2)));
+                            break;
 
-                    case (int)Define.DataStatus.Hide:
-                        ClientReceiveProcessor.Enqueue(() =>
-                        rivalBoard.HideBlock(msg.Substring(2)));
-                        break;
+                        case (int)Define.DataStatus.Generate:
+                            ClientReceiveProcessor.Enqueue(() =>
+                            rivalBoard.GenerateBlock(msg.Substring(2)));
+                            break;
 
-                    default:
-                        break;
+                        case (int)Define.DataStatus.Hide:
+                            ClientReceiveProcessor.Enqueue(() =>
+                            rivalBoard.HideBlock(msg.Substring(2)));
+                            break;
+
+                        default:
+                            break;
+                    }
                 }
+                else if (msg == "MATCHED")
+                {
+                    Debug.Log("Match requirement...");
+                    ClientReceiveProcessor.Enqueue(() =>
+                        PlayerBoard.OnGameStart?.Invoke());
+                }
+                else
+                {
+                    Debug.Log(msg);
+                }
+
             }
         }
         catch (Exception e)

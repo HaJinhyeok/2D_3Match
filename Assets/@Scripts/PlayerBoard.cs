@@ -4,8 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
-using static Unity.Collections.AllocatorManager;
-using System.Linq;
+using System;
 
 public static class MouseData
 {
@@ -15,9 +14,10 @@ public static class MouseData
 
 public class PlayerBoard : Board
 {
-    //public GameObject BlockPrefab;
-    //public Sprite[] BlockImages;
     public Client Client;
+
+    public static Action OnGameStart;
+
 
     //public Button TestButton;
     //public Button RemoveButton;
@@ -27,17 +27,27 @@ public class PlayerBoard : Board
 
     protected override void Start()
     {
-        base.Start();
-        CreateRandomBlocks();
-        Invoke("MakeBlocks", Time.deltaTime);
+        Client.SendMessageToServer("MATCH");
+        base.Start();        
         MouseData.IsDragging = false;
-
+        OnGameStart += GameStart;
+        
         // Test용 버튼들
         //TestButton.onClick.AddListener(OnTestButtonClick);
         //RemoveButton.onClick.AddListener(OnRemoveButtonClick);
         //MakeButton.onClick.AddListener(OnMakeButtonClick);
     }
 
+    private void OnDestroy()
+    {
+        OnGameStart -= GameStart;
+    }
+
+    void GameStart()
+    {
+        CreateRandomBlocks();
+        Invoke("MakeBlocks", Time.deltaTime);
+    }
 
     void CreateRandomBlocks()
     {
