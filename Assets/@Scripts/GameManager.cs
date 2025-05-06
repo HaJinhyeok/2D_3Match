@@ -1,5 +1,21 @@
 using UnityEngine;
 
+public class GameStatus
+{
+    public int PlayerScore;
+    public string PlayerName = "Player";
+    public int RivalScore;
+    public string RivalName = "Rival";
+
+    public string GameResult;
+
+    public void OnRivalConnectionError()
+    {
+        RivalScore = 0;
+        GameResult = Define.VictoryText;
+    }
+}
+
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance = null;
@@ -7,6 +23,10 @@ public class GameManager : MonoBehaviour
 
     public GameObject BlockPrefab;
     public Sprite[] BlockImages;
+    public GameStatus GameStatus=new GameStatus();
+
+    PlayerBoard _playerBoard;
+    RivalBoard _rivalBoard;
 
     public static GameManager Instance
     {
@@ -34,21 +54,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    int _score = 0;
-    public int Score
-    {
-        get { return _score; }
-        set
-        {
-            _score = value;
-            UI_Game.ScoreChangeAction?.Invoke();
-        }
-    }
-
     void Awake()
     {
-        _score = 0;
         LoadResources();
+        _playerBoard = FindAnyObjectByType<PlayerBoard>();
+        _rivalBoard = FindAnyObjectByType<RivalBoard>();
     }
 
     void LoadResources()

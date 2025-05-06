@@ -56,7 +56,7 @@ public class Client : MonoBehaviour
                 //Debug.Log($"Received from server: {msg}");
                 int status = (int)msg[0] - 48;
                 // num of dataStatus
-                if(status>=0&&status<5)
+                if (status >= 0 && status < 5)
                 {
                     switch (status)
                     {
@@ -92,9 +92,18 @@ public class Client : MonoBehaviour
                 }
                 else if (msg == "MATCHED")
                 {
-                    Debug.Log("Match requirement...");
+                    Debug.Log("Matching Success!!!");
                     ClientReceiveProcessor.Enqueue(() =>
                         PlayerBoard.OnGameStart?.Invoke());
+                }
+                else if (msg == Define.RivalConnectionError)
+                {
+                    Debug.Log(Define.RivalConnectionFailText);
+                    ClientReceiveProcessor.Enqueue(() =>
+                    {
+                        PlayerBoard.OnRivalConnectionError?.Invoke();
+                        rivalBoard.FinishGame();
+                    });
                 }
                 else
                 {

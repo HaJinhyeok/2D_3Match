@@ -15,7 +15,14 @@ public class Board : MonoBehaviour
     protected Vector2 _space;
     protected const int _numOfColumn = 7;
 
-    bool isPlayer;
+    int _score;
+
+    public Text ScoreText;
+    public int Score
+    {
+        get { return _score; }
+        set { _score = value; }
+    }
 
     protected virtual void Start()
     {
@@ -24,7 +31,6 @@ public class Board : MonoBehaviour
         _space = _blockSize / 10f;
         _size = _blockSize - _space;
         _start = new Vector2(-_boardSize.x / 2 + _blockSize.x / 2, _boardSize.x / 2 - _blockSize.x / 2);
-        isPlayer = GetComponent<PlayerBoard>() != null;
     }
 
     protected Vector2 CalculatePosition(int idx)
@@ -87,7 +93,7 @@ public class Board : MonoBehaviour
     }
 
     // 공통: 매칭된 블록 이미지 삭제하기
-    protected void DestroyMatchBlocks(List<int> indices)
+    protected virtual void DestroyMatchBlocks(List<int> indices)
     {
         foreach (int idx in indices)
         {
@@ -95,12 +101,10 @@ public class Board : MonoBehaviour
             {
                 _blocks[idx / _numOfColumn, idx % _numOfColumn].TurnOffBlock();
                 _blocks[idx / _numOfColumn, idx % _numOfColumn].BlockCrash();
-                if (isPlayer)
-                {
-                    GameManager.Instance.Score++;
-                }
+                _score++;
             }
         }
+        ScoreText.text = $"SCORE: {_score}";
     }
 
     protected IEnumerator CoMoveBlocks(List<List<GameObject>> movingBlocks)
@@ -138,5 +142,21 @@ public class Board : MonoBehaviour
         }
 
         movingBlocks.Clear();
+    }
+
+    // 공통: 보드판 초기화
+    protected void ClearBoard()
+    {
+        foreach(KeyValuePair<GameObject,Block> keyValue in _blockDictionary)
+        {
+            Destroy(keyValue.Key);
+        }
+        for (int i = 0; i < _numOfColumn; i++)
+        {
+            for (int j = 0; j < _numOfColumn; j++)
+            {
+                Destroy(_blocks[i, j]);
+            }
+        }
     }
 }

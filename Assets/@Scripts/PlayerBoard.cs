@@ -5,6 +5,7 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
 using System;
+using UnityEngine.SceneManagement;
 
 public static class MouseData
 {
@@ -16,7 +17,13 @@ public class PlayerBoard : Board
 {
     public Client Client;
 
+    public Button CheckButton;
+    public Button ChangeButton;
+    public Text CheckResultText;
+
     public static Action OnGameStart;
+    public static Action OnGameFinish;
+    public static Action OnRivalConnectionError;
 
 
     //public Button TestButton;
@@ -24,14 +31,54 @@ public class PlayerBoard : Board
     //public Button MakeButton;
 
     bool _isBlockMoving = false;
+    bool _isChecking = false;
+    float _timeCount;
+    const float _checkCoolTime = 3f;
+
+    #region Life Cycle
+    private void Update()
+    {
+        if (_isChecking)
+        {
+            _timeCount += Time.deltaTime;
+            if (_timeCount >= _checkCoolTime)
+            {
+                _timeCount = 0;
+                _isChecking = false;
+                if (CheckResultText != null)
+                {
+                    OnCheckButtonClick();
+                }
+            }
+        }
+        else
+        {
+            _timeCount = 0;
+        }
+    }
 
     protected override void Start()
     {
-        Client.SendMessageToServer("MATCH");
-        base.Start();        
+        base.Start();
         MouseData.IsDragging = false;
         OnGameStart += GameStart;
-        
+        OnGameFinish += FinishGame;
+        OnRivalConnectionError += RivalConnectionError;
+        if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
+        {
+            Client.SendMessageToServer("MATCH");
+            CheckButton = null;
+            ChangeButton = null;
+            CheckResultText = null;
+        }
+        else if (SceneManager.GetActiveScene().name == Define.SoloGameScene)
+        {
+            Client = null;
+            CheckButton.onClick.AddListener(OnCheckButtonClick);
+            ChangeButton.onClick.AddListener(OnChangeButtonClick);
+            GameStart();
+        }
+
         // Test용 버튼들
         //TestButton.onClick.AddListener(OnTestButtonClick);
         //RemoveButton.onClick.AddListener(OnRemoveButtonClick);
@@ -41,12 +88,19 @@ public class PlayerBoard : Board
     private void OnDestroy()
     {
         OnGameStart -= GameStart;
+        OnGameFinish -= FinishGame;
+        OnRivalConnectionError -= RivalConnectionError;
     }
+    #endregion
 
+    #region General Methods
     void GameStart()
     {
         CreateRandomBlocks();
         Invoke("MakeBlocks", Time.deltaTime);
+        Score = 0;
+        ScoreText.text = $"SCORE: {Score}";
+        GameManager.Instance.GameStatus.PlayerScore = Score;
     }
 
     void CreateRandomBlocks()
@@ -70,7 +124,7 @@ public class PlayerBoard : Board
             AddEvent(block, EventTriggerType.EndDrag, delegate { OnEndDrag(block); });
             AddEvent(block, EventTriggerType.PointerEnter, delegate { StartCoroutine(OnEnterBlock(block)); });
 
-            // blcok component마다 블록 이미지 5가지 중 하나 랜덤 부여
+            // block component마다 블록 이미지 5가지 중 하나 랜덤 부여
             int rnd = UnityEngine.Random.Range(0, GameManager.Instance.BlockImages.Length);
             block.GetComponent<Block>().UpdateBlockImage(GameManager.Instance.BlockImages[rnd]);
 
@@ -85,9 +139,36 @@ public class PlayerBoard : Board
                 clientData += "\n";
             else clientData += " ";
         }
-        Client.SendMessageToServer(clientData);
+        Client?.SendMessageToServer(clientData);
 
     }
+
+    IEnumerator ChangeAllBlockImages()
+    {
+        for (int i = 0; i < _numOfColumn; i++)
+        {
+            for (int j = 0; j < _numOfColumn; j++)
+            {
+                _blocks[i, j].BlockCrash();
+                _blocks[i, j].UpdateBlockImage(GameManager.Instance.BlockImages[UnityEngine.Random.Range(0, GameManager.Instance.BlockImages.Length)]);
+            }
+        }
+        yield return new WaitForSeconds(0.5f);
+        MakeBlocks();
+    }
+
+    public void FinishGame()
+    {
+        ClearBoard();
+    }
+
+    public void RivalConnectionError()
+    {
+        ClearBoard();
+        GameManager.Instance.GameStatus.OnRivalConnectionError();
+        ResultPanel.OnResultPanelOn?.Invoke();
+    }
+    #endregion
 
     #region Event
     // 이미지의 이동 범위는 상 or 하 or 좌 or 우 방향으로 한 블록까지만
@@ -136,6 +217,7 @@ public class PlayerBoard : Board
             else
             {
                 _isBlockMoving = true;
+                _isChecking = false;
                 yield return StartCoroutine(CoSwapBlocks(enterBlock, startBlock));
                 {
                     // 만약 3매치가 없으면(==삭제할게 없으면), 두 블록 다시 제자리로
@@ -162,17 +244,6 @@ public class PlayerBoard : Board
     // 발생 시, 해당 블록들의 리스트들을 반환
     public List<List<int>> CheckMatches()
     {
-        //bool[] isChecked = new bool[64];
-        //List<List<int>> matches = new List<List<int>>();
-        //List<int> tmp;
-        //for (int i = 0; i < _blocks.Length; i++)
-        //{
-        //    tmp = CheckMatchFromBlock(i, isChecked);
-        //    if (tmp != null)
-        //        matches.Add(tmp);
-        //}
-        //return matches;
-
         List<List<int>> matches = new List<List<int>>();
         List<List<int>> tmp;
         for (int i = 0; i < _numOfColumn; i++)
@@ -183,7 +254,6 @@ public class PlayerBoard : Board
                 for (int j = 0; j < tmp.Count; j++)
                 {
                     matches.Add(tmp[j]);
-                    //PrintList(tmp[j]);
                 }
             }
 
@@ -193,53 +263,10 @@ public class PlayerBoard : Board
                 for (int j = 0; j < tmp.Count; j++)
                 {
                     matches.Add(tmp[j]);
-                    //PrintList(tmp[j]);
                 }
             }
         }
         return matches;
-    }
-
-    // idx번째 블록을 기준으로 3-match 발생하는지 검사
-    // 발생 시 해당 블록들의 인덱스 정보 담은 리스트 반환
-    // 배열 크기가 3 미만이면 null 반환
-    List<int> CheckMatchFromBlock(int idx, bool[] isChecked)
-    {
-        List<int> matchBlocks = new List<int>();
-        CheckSameBlock(matchBlocks, idx, _blocks[idx / _numOfColumn, idx % _numOfColumn].GetComponent<Image>().sprite, isChecked);
-
-        if (matchBlocks.Count <= 2)
-            return null;
-        else
-            return matchBlocks;
-    }
-
-    // idx번째 블록 기준으로 오른쪽 혹은 아래 블록이 같은 종류인지 체크
-    // 같은 종류면 blocks 리스트에 담아주고, 아니면 통과
-    void CheckSameBlock(List<int> matchBlocks, int idx, Sprite sprite, bool[] isChecked)
-    {
-        if (isChecked[idx])
-            return;
-        Sprite blockImage = _blocks[idx / _numOfColumn, idx % _numOfColumn].GetComponent<Image>().sprite;
-        if (blockImage == null)
-            return;
-        if (blockImage == sprite)
-        {
-            int posX = idx / _numOfColumn;
-            int posY = idx % _numOfColumn;
-            matchBlocks.Add(idx);
-            isChecked[idx] = true;
-            // 왼쪽 블록
-            if (idx % _numOfColumn - 1 >= 0)
-                CheckSameBlock(matchBlocks, idx - 1, sprite, isChecked);
-            // 오른쪽 블록
-            if (idx % _numOfColumn + 1 < _numOfColumn)
-                CheckSameBlock(matchBlocks, idx + 1, sprite, isChecked);
-            // 아래쪽 블록
-            if (idx / _numOfColumn + 1 < _numOfColumn)
-                CheckSameBlock(matchBlocks, idx + _numOfColumn, sprite, isChecked);
-        }
-
     }
 
     // idx번째 row 혹은 column 조사
@@ -313,9 +340,73 @@ public class PlayerBoard : Board
                 List<int> tmp = new List<int>(blocks);
                 blocksOfLine.Add(tmp);
             }
-            //return blocksOfLine.Count > 0 ? blocksOfLine : null;
             return blocksOfLine;
         }
+    }
+
+    // 블록 움직였을 때 3매치가 만들어지는지 여부 검사
+    // 블록 움직여서 3매치가 하나라도 만들어지면 true
+    // column%2==0 && row%2==0인 블록에 대해서만 실시
+    // 해당 블록
+    bool Is3MatchPossible()
+    {
+        // 행 단위 검사
+        for (int i = 0; i < _numOfColumn; i += 2)
+        {
+            for (int j = 0; j < _numOfColumn; j++)
+            {
+                // 아랫블록과 교환했을 때 확인
+                if (i < _numOfColumn - 1 && Is3MatchPossibleOnBlocks(i * _numOfColumn + j, (i + 1) * _numOfColumn + j))
+                {
+                    return true;
+                }
+                // 윗블록과 교환했을 때 확인
+                if (i > 0 && Is3MatchPossibleOnBlocks(i * _numOfColumn + j, (i - 1) * _numOfColumn + j))
+                {
+                    return true;
+                }
+            }
+        }
+        // 열 단위 검사
+        for (int i = 0; i < _numOfColumn; i += 2)
+        {
+            for (int j = 0; j < _numOfColumn; j++)
+            {
+                // 오른쪽 블록과 교환했을 때 확인
+                if (i < _numOfColumn - 1 && Is3MatchPossibleOnBlocks(j * _numOfColumn + i, j * _numOfColumn + i + 1))
+                {
+                    return true;
+                }
+                // 왼쪽 블록과 교환했을 때 확인
+                if (i > 0 && Is3MatchPossibleOnBlocks(j * _numOfColumn + i, j * _numOfColumn + i - 1))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // first번 블록과 second번 블록을 swap했을 때 3match가 만들어지는지 검사
+    bool Is3MatchPossibleOnBlocks(int first, int second)
+    {
+        bool flag = false;
+        int x1 = first / _numOfColumn, y1 = first % _numOfColumn;
+        int x2 = second / _numOfColumn, y2 = second % _numOfColumn;
+        Sprite firstImage = _blocks[x1, y1].BlockImage.sprite;
+        Sprite secondImage = _blocks[x2, y2].BlockImage.sprite;
+        _blocks[x1, y1].BlockImage.sprite = secondImage;
+        _blocks[x2, y2].BlockImage.sprite = firstImage;
+
+        if (CheckingRowOrColumn(x1, false).Count > 0 || CheckingRowOrColumn(x2, false).Count > 0
+            || CheckingRowOrColumn(y1, true).Count > 0 || CheckingRowOrColumn(y2, true).Count > 0)
+        {
+            flag = true;
+        }
+        _blocks[x1, y1].BlockImage.sprite = firstImage;
+        _blocks[x2, y2].BlockImage.sprite = secondImage;
+        return flag;
     }
     #endregion
 
@@ -335,7 +426,7 @@ public class PlayerBoard : Board
         // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
         // 이때, 움직임은 코루틴으로 표현
         string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
-        Client.SendMessageToServer(clientData);
+        Client?.SendMessageToServer(clientData);
         yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
     }
 
@@ -347,10 +438,12 @@ public class PlayerBoard : Board
             yield return new WaitForSeconds(0.5f);
         } while (DestroyBlocks());
         _isBlockMoving = false;
+        _isChecking = true;
     }
 
     void MakeBlocks()
     {
+        _isBlockMoving = true;
         StartCoroutine(CoMakeBlocks());
     }
 
@@ -370,7 +463,7 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            Client.SendMessageToServer(clientData);
+            Client?.SendMessageToServer(clientData);
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -431,10 +524,16 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            Client.SendMessageToServer(clientData);
+            Client?.SendMessageToServer(clientData);
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
+    }
+
+    protected override void DestroyMatchBlocks(List<int> indices)
+    {
+        base.DestroyMatchBlocks(indices);
+        GameManager.Instance.GameStatus.PlayerScore = Score;
     }
 
     IEnumerator CoCheckAndSupplyBlocksToColumn()
@@ -536,8 +635,8 @@ public class PlayerBoard : Board
                     clientData += '\n';
                 }
             }
-            Client.SendMessageToServer(hideBlockData);
-            Client.SendMessageToServer(clientData);
+            Client?.SendMessageToServer(hideBlockData);
+            Client?.SendMessageToServer(clientData);
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
         }
@@ -545,6 +644,46 @@ public class PlayerBoard : Board
     #endregion
 
     #region Test Code
+    public void OnCheckButtonClick()
+    {
+        Color color = CheckResultText.color;
+        color.a = 1f;
+        CheckResultText.color = color;
+        if (Is3MatchPossible())
+        {
+            CheckResultText.text = Define.PossibleText;
+        }
+        else
+        {
+            CheckResultText.text = Define.ImpossibleText;
+        }
+        StartCoroutine(CoTextVanish());
+    }
+
+    IEnumerator CoTextVanish()
+    {
+        Color color = CheckResultText.color;
+        yield return new WaitForSeconds(2f);
+        color.a = 0f;
+        CheckResultText.color = color;
+    }
+
+    public void OnChangeButtonClick()
+    {
+        StartCoroutine(CoChangeAllBlocks());
+    }
+
+    IEnumerator CoChangeAllBlocks()
+    {
+        Color color = CheckResultText.color;
+        color.a = 1f;
+        CheckResultText.color = color;
+        CheckResultText.text = Define.NewBoardText;
+        StartCoroutine(CoTextVanish());
+        yield return new WaitForSeconds(2f);
+        StartCoroutine(ChangeAllBlockImages());
+    }
+
     public void OnTestButtonClick()
     {
         string test = "match idices\n";

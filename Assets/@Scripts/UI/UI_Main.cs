@@ -21,12 +21,12 @@ public class UI_Main : MonoBehaviour
 
     public void OnSoloPlayButtonClick()
     {
-        SceneManager.LoadScene(Define.GameScene);
+        SceneManager.LoadScene(Define.SoloGameScene);
     }
 
     public void OnMatchPlayButton()
     {
-        SceneManager.LoadScene(Define.GameScene);
+        SceneManager.LoadScene(Define.MatchGameScene);
     }
 
     public void OnExitButtonClick()

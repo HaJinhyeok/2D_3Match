@@ -14,11 +14,6 @@ public class Block : MonoBehaviour
         get { return BlockImage.color.a <= 0.1f; }
     }
 
-    void Start()
-    {
-        // BlockCrashEffect = GetComponent<VisualEffect>();
-    }
-
     public void TurnOffBlock()
     {
         Color color = BlockImage.color;

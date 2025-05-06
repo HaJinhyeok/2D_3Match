@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -34,6 +35,8 @@ public class RivalBoard : Board
                 j++;
             }
         }
+        Score = 0;
+        ScoreText.text = $"SCORE: {Score}";
     }
 
     // Swap 들어왔을 때
@@ -59,6 +62,12 @@ public class RivalBoard : Board
         DestroyMatchBlocks(matchBlocks);
     }
 
+    protected override void DestroyMatchBlocks(List<int> indices)
+    {
+        base.DestroyMatchBlocks(indices);
+        GameManager.Instance.GameStatus.RivalScore = Score;
+    }
+
     // Generate 들어왔을 때
     public void GenerateBlock(string data)
     {
@@ -79,6 +88,12 @@ public class RivalBoard : Board
                 _blocks[int.Parse(coord[0]), int.Parse(coord[1])].TurnOffBlock();
             }
         }
+    }
+
+    // Finish 들어왔을 때?
+    public void FinishGame()
+    {
+        ClearBoard();
     }
 
     // 받아온 데이터를 이용해 움직일 블록 이미지 정보 가져오기
