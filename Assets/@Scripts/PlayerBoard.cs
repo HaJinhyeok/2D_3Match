@@ -49,6 +49,10 @@ public class PlayerBoard : Board
                 {
                     OnCheckButtonClick();
                 }
+                if(!Is3MatchPossible())
+                {
+                    StartCoroutine(CoChangeAllBlocks());
+                }
             }
         }
         else
@@ -145,6 +149,7 @@ public class PlayerBoard : Board
 
     IEnumerator ChangeAllBlockImages()
     {
+        _isBlockMoving = true;
         for (int i = 0; i < _numOfColumn; i++)
         {
             for (int j = 0; j < _numOfColumn; j++)
@@ -675,10 +680,13 @@ public class PlayerBoard : Board
 
     IEnumerator CoChangeAllBlocks()
     {
-        Color color = CheckResultText.color;
-        color.a = 1f;
-        CheckResultText.color = color;
-        CheckResultText.text = Define.NewBoardText;
+        if(CheckResultText!=null)
+        {
+            Color color = CheckResultText.color;
+            color.a = 1f;
+            CheckResultText.color = color;
+            CheckResultText.text = Define.NewBoardText;
+        }        
         StartCoroutine(CoTextVanish());
         yield return new WaitForSeconds(2f);
         StartCoroutine(ChangeAllBlockImages());
