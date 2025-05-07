@@ -16,7 +16,6 @@ public class UI_Main : MonoBehaviour
         MatchPlayButton.onClick.AddListener(OnMatchPlayButton);
         ExitButton.onClick.AddListener(OnExitButtonClick);
         ScreenText.text = Screen.width + "x" + Screen.height;
-        Debug.Log(Screen.width + "x" + Screen.height);
     }
 
     public void OnSoloPlayButtonClick()
