@@ -15,8 +15,6 @@ public static class MouseData
 
 public class PlayerBoard : Board
 {
-    public Client Client;
-
     public Button CheckButton;
     public Button ChangeButton;
     public Text CheckResultText;
@@ -24,7 +22,6 @@ public class PlayerBoard : Board
     public static Action OnGameStart;
     public static Action OnGameFinish;
     public static Action OnRivalConnectionError;
-    public static Action<string> OnSendMessageToServer;
 
 
     //public Button TestButton;
@@ -80,18 +77,16 @@ public class PlayerBoard : Board
         OnGameStart += GameStart;
         OnGameFinish += () => StartCoroutine(FinishGame());
         OnRivalConnectionError += RivalConnectionError;
-        OnSendMessageToServer += (msg) => Client?.SendMessageToServer(msg);
 
         if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
         {
-            Client.SendMessageToServer("MATCH");
+            GameManager.Client.SendMessageToServer("MATCH");
             CheckButton = null;
             ChangeButton = null;
             CheckResultText = null;
         }
         else if (SceneManager.GetActiveScene().name == Define.SoloGameScene)
         {
-            Client = null;
             CheckButton.onClick.AddListener(OnCheckButtonClick);
             ChangeButton.onClick.AddListener(OnChangeButtonClick);
             GameStart();
@@ -113,7 +108,7 @@ public class PlayerBoard : Board
     #endregion
 
     #region General Methods
-    void GameStart()
+    public void GameStart()
     {
         CreateRandomBlocks();
         Invoke("MakeBlocks", Time.deltaTime);
@@ -160,7 +155,7 @@ public class PlayerBoard : Board
                 clientData += "\n";
             else clientData += " ";
         }
-        Client?.SendMessageToServer(clientData);
+        GameManager.Client.SendMessageToServer(clientData);
 
     }
 
@@ -184,7 +179,7 @@ public class PlayerBoard : Board
         string clientData = $"{(int)Define.DataStatus.Finish}\n{Score}";
         _isChecking = false;
         StopAllCoroutines();
-        Client?.SendMessageToServer(clientData);
+        GameManager.Client.SendMessageToServer(clientData);
         GameManager.Instance.GameStatus.PlayerScore = Score;
 
         // 매치 게임일 때
@@ -471,7 +466,7 @@ public class PlayerBoard : Board
         // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
         // 이때, 움직임은 코루틴으로 표현
         string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
-        Client?.SendMessageToServer(clientData);
+        GameManager.Client.SendMessageToServer(clientData);
         yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
     }
 
@@ -508,7 +503,8 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            Client?.SendMessageToServer(clientData);
+            GameManager.Client.SendMessageToServer(clientData);
+            clientData = "";
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -569,7 +565,7 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            Client?.SendMessageToServer(clientData);
+            GameManager.Client.SendMessageToServer(clientData);
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -682,8 +678,8 @@ public class PlayerBoard : Board
                     clientData += '\n';
                 }
             }
-            Client?.SendMessageToServer(hideBlockData);
-            Client?.SendMessageToServer(clientData);
+            GameManager.Client.SendMessageToServer(hideBlockData);
+            GameManager.Client.SendMessageToServer(clientData);
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
         }

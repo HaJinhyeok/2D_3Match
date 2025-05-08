@@ -20,14 +20,26 @@ public class Board : MonoBehaviour
     {
         get { return _isTimeFlowing; }
     }
+    public Text ScoreText;
+    public Text PlayerName;
 
     int _score;
 
-    public Text ScoreText;
     public int Score
     {
         get { return _score; }
         set { _score = value; }
+    }
+
+    string _name;
+
+    public string Name
+    {
+        set
+        {
+            _name = value;
+            PlayerName.text = _name;
+        }
     }
 
     protected virtual void Start()

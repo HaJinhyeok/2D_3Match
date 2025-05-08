@@ -4,9 +4,9 @@ using UnityEngine.SceneManagement;
 public class GameStatus
 {
     public int PlayerScore;
-    public string PlayerName = "Player";
+    public string PlayerName = "";
     public int RivalScore;
-    public string RivalName = "Rival";
+    public string RivalName = "";
     // 상대방이 게임 진행 중인지 여부
     public bool IsRivalPlaying = false;
 
@@ -50,14 +50,15 @@ public class GameStatus
 public class GameManager : MonoBehaviour
 {
     private static GameManager instance = null;
+    private static Client client = null;
     private GameManager() { }
 
     public GameObject BlockPrefab;
     public Sprite[] BlockImages;
     public GameStatus GameStatus = new GameStatus();
 
-    PlayerBoard _playerBoard;
-    RivalBoard _rivalBoard;
+    public PlayerBoard Player;
+    public RivalBoard Rival;
 
     float _currentTime;
 
@@ -97,12 +98,50 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public static Client Client
+    {
+        get
+        {
+            if (client == null)
+            {
+                GameObject go = GameObject.Find("@Managers");
+                if (go == null)
+                {
+                    go = new GameObject("@Managers");
+                    DontDestroyOnLoad(go);
+                }
+
+                client = FindAnyObjectByType<Client>();
+                if (client == null)
+                {
+                    GameObject gameClient = new GameObject("Client");
+                    Client tmp = gameClient.AddComponent<Client>();
+                    gameClient.AddComponent<ClientReceiveProcessor>();
+                    gameClient.transform.SetParent(go.transform);
+                    client = tmp;
+                }
+            }
+
+            return client;
+        }
+    }
+
     void Awake()
     {
         LoadResources();
         GameInitialize();
-        _playerBoard = FindAnyObjectByType<PlayerBoard>();
-        _rivalBoard = FindAnyObjectByType<RivalBoard>();
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log("씬 로드 완료: " + scene.name);
+        LoadBoards();
     }
 
     void LoadResources()
@@ -116,5 +155,12 @@ public class GameManager : MonoBehaviour
         CurrentTime = Define.TimeLimit;
         GameStatus.PlayerScore = 0;
         GameStatus.RivalScore = 0;
+    }
+
+    // 씬 변경 시마다 로드해주는 게 좋음
+    public void LoadBoards()
+    {
+        Player = FindAnyObjectByType<PlayerBoard>();
+        Rival = FindAnyObjectByType<RivalBoard>();
     }
 }

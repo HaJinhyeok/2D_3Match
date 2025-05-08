@@ -3,20 +3,21 @@ using System.Net.Sockets;
 using System.Threading;
 using System;
 using System.Text;
+using UnityEngine.SceneManagement;
 
 public class Client : MonoBehaviour
 {
     TcpClient client;
     NetworkStream networkStream;
     Thread thread;
-    RivalBoard rivalBoard;
+    //RivalBoard Rival;
 
     void Start()
     {
         ConnectToServer("127.0.0.1", 9000);
-        GameObject parent = GetComponentInParent<Transform>().gameObject;
-        DontDestroyOnLoad(parent);
-        rivalBoard = FindAnyObjectByType<RivalBoard>();
+        //GameObject parent = GetComponentInParent<Transform>().gameObject;
+        //DontDestroyOnLoad(parent);
+        //Rival = FindAnyObjectByType<RivalBoard>();
     }
 
     void ConnectToServer(string ip, int port)
@@ -53,20 +54,33 @@ public class Client : MonoBehaviour
                 }
 
                 string msg = Encoding.UTF8.GetString(buffer, 0, bytes);
+                string[] messages = msg.Split(' ');
                 //Debug.Log($"Received from server: {msg}");
-                if (msg == "MATCHED")
+                if (messages[0] == "MATCHED")
                 {
+                    //string[] playerName = messages[1].Split(' ');
                     Debug.Log("Matching Success!!!");
                     ClientReceiveProcessor.Enqueue(() =>
-                        PlayerBoard.OnGameStart?.Invoke());
+                    {
+                        UI_Waiting.OnWaitingAction?.Invoke(false);
+                        GameManager.Instance.Player.GameStart();
+                        GameManager.Instance.Player.Name = messages[1];
+                        GameManager.Instance.Rival.Name = messages[2];
+                    });
                 }
-                else if (msg == Define.RivalConnectionError)
+                else if (messages[0] == "WAITING")
+                {
+                    Debug.Log("Waiting...");
+                    ClientReceiveProcessor.Enqueue(() =>
+                    UI_Waiting.OnWaitingAction?.Invoke(true));
+                }
+                else if (messages[0] == Define.RivalConnectionError)
                 {
                     Debug.Log(Define.RivalConnectionFailText);
                     ClientReceiveProcessor.Enqueue(() =>
                     {
                         PlayerBoard.OnRivalConnectionError?.Invoke();
-                        rivalBoard.FinishGame();
+                        GameManager.Instance.Rival.FinishGame();
                     });
                 }
                 else
@@ -76,28 +90,28 @@ public class Client : MonoBehaviour
                     {
                         case (int)Define.DataStatus.Start:
                             ClientReceiveProcessor.Enqueue(() =>
-                            rivalBoard.StartGame(msg.Substring(2)));
+                            GameManager.Instance.Rival.StartGame(msg.Substring(2)));
 
                             break;
 
                         case (int)Define.DataStatus.Swap:
                             ClientReceiveProcessor.Enqueue(() =>
-                            StartCoroutine(rivalBoard.SwapBlock(msg.Substring(2))));
+                            StartCoroutine(GameManager.Instance.Rival.SwapBlock(msg.Substring(2))));
                             break;
 
                         case (int)Define.DataStatus.Destroy:
                             ClientReceiveProcessor.Enqueue(() =>
-                                rivalBoard.DestroyBlock(msg.Substring(2)));
+                                GameManager.Instance.Rival.DestroyBlock(msg.Substring(2)));
                             break;
 
                         case (int)Define.DataStatus.Generate:
                             ClientReceiveProcessor.Enqueue(() =>
-                            rivalBoard.GenerateBlock(msg.Substring(2)));
+                            GameManager.Instance.Rival.GenerateBlock(msg.Substring(2)));
                             break;
 
                         case (int)Define.DataStatus.Hide:
                             ClientReceiveProcessor.Enqueue(() =>
-                            rivalBoard.HideBlock(msg.Substring(2)));
+                            GameManager.Instance.Rival.HideBlock(msg.Substring(2)));
                             break;
 
                         case (int)Define.DataStatus.Result:
@@ -126,6 +140,9 @@ public class Client : MonoBehaviour
         catch (Exception e)
         {
             Debug.LogError($"Receive Error: {e.Message}");
+            ClientReceiveProcessor.Enqueue(() =>
+            SceneManager.LoadScene(Define.MainScene)
+            );
         }
     }
 
@@ -144,4 +161,6 @@ public class Client : MonoBehaviour
         networkStream?.Close();
         client?.Close();
     }
+
+    public void Initialize() { }
 }

@@ -8,7 +8,7 @@ public class ResultPanel : MonoBehaviour
     public Text GameResultText;
     public Text PlayerScoreText;
     public Text RivalScoreText;
-    public Button RestartButton;
+    public Button NextGameButton;
     public Button BackButton;
 
     public static Action OnResultPanelOn;
@@ -17,7 +17,7 @@ public class ResultPanel : MonoBehaviour
     {
         OnResultPanelOn += ResultPanelOn;
         BackButton.onClick.AddListener(OnBackButtonClick);
-        RestartButton.onClick.AddListener(OnRestartButtonClick);
+        NextGameButton.onClick.AddListener(OnNextGameButtonClick);
         gameObject.SetActive(false);
     }
 
@@ -37,7 +37,7 @@ public class ResultPanel : MonoBehaviour
         }
     }
 
-    void OnRestartButtonClick()
+    void OnNextGameButtonClick()
     {
         PlayerBoard player = FindAnyObjectByType<PlayerBoard>();
         player.ClearBoard();
@@ -49,13 +49,15 @@ public class ResultPanel : MonoBehaviour
         {
             RivalBoard rival = FindAnyObjectByType<RivalBoard>();
             rival.ClearBoard();
+            GameManager.Client.SendMessageToServer("MATCH");
+            UI_Waiting.OnWaitingAction?.Invoke(true);
         }
         gameObject.SetActive(false);
     }
 
     void OnBackButtonClick()
     {
-        PlayerBoard.OnSendMessageToServer?.Invoke($"{(int)Define.DataStatus.ExitMatch}");
+        GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
         SceneManager.LoadScene(Define.MainScene);
     }
 }

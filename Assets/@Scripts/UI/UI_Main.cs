@@ -15,6 +15,9 @@ public class UI_Main : MonoBehaviour
         SoloPlayButton.onClick.AddListener(OnSoloPlayButtonClick);
         MatchPlayButton.onClick.AddListener(OnMatchPlayButton);
         ExitButton.onClick.AddListener(OnExitButtonClick);
+        GameManager.Instance.GameInitialize();
+        GameManager.Client.Initialize();
+
         ScreenText.text = Screen.width + "x" + Screen.height;
     }
 
