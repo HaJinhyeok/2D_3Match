@@ -28,7 +28,7 @@ public class UI_Main : MonoBehaviour
 
     public void OnMatchPlayButton()
     {
-        SceneManager.LoadScene(Define.MatchGameScene);
+        GameManager.Client.ConnectToServer(Define.address, Define.PORT);
     }
 
     public void OnExitButtonClick()

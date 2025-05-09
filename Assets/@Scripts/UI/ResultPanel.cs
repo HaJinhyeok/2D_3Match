@@ -31,7 +31,7 @@ public class ResultPanel : MonoBehaviour
         gameObject.SetActive(true);
         GameResultText.text = GameManager.Instance.GameStatus.GameResult;
         PlayerScoreText.text = $"{GameManager.Instance.GameStatus.PlayerScore}Á¡";
-        if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
+        if (GameManager.s_isNetworkOn)
         {
             RivalScoreText.text = $"{GameManager.Instance.GameStatus.RivalScore}Á¡";
         }
@@ -41,11 +41,11 @@ public class ResultPanel : MonoBehaviour
     {
         PlayerBoard player = FindAnyObjectByType<PlayerBoard>();
         player.ClearBoard();
-        if (SceneManager.GetActiveScene().name == Define.SoloGameScene)
+        if (!GameManager.s_isNetworkOn)
         {
             PlayerBoard.OnGameStart?.Invoke();
         }
-        else if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
+        else
         {
             RivalBoard rival = FindAnyObjectByType<RivalBoard>();
             rival.ClearBoard();
@@ -57,7 +57,11 @@ public class ResultPanel : MonoBehaviour
 
     void OnBackButtonClick()
     {
-        GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
+        if (GameManager.s_isNetworkOn)
+        {
+            GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
+            GameManager.s_isNetworkOn = false;
+        }
         SceneManager.LoadScene(Define.MainScene);
     }
 }

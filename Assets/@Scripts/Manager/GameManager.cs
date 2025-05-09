@@ -59,6 +59,22 @@ public class GameManager : MonoBehaviour
 
     public PlayerBoard Player;
     public RivalBoard Rival;
+    public static bool s_isNetworkOn = false;
+    public static bool s_isFinished = false;
+
+    bool isPaused = false;
+    public bool IsPaused
+    {
+        get { return isPaused; }
+        set
+        {
+            isPaused = value;
+            if (!isPaused)
+            {
+                PausePanel.OnPauseOff?.Invoke();
+            }
+        }
+    }
 
     float _currentTime;
 
@@ -140,7 +156,6 @@ public class GameManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        Debug.Log("씬 로드 완료: " + scene.name);
         LoadBoards();
     }
 
@@ -155,6 +170,7 @@ public class GameManager : MonoBehaviour
         CurrentTime = Define.TimeLimit;
         GameStatus.PlayerScore = 0;
         GameStatus.RivalScore = 0;
+        s_isFinished = false;
     }
 
     // 씬 변경 시마다 로드해주는 게 좋음

@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -37,7 +36,7 @@ public class RivalBoard : Board
             }
         }
         Score = 0;
-        ScoreText.text = $"SCORE: {Score}";
+        ScoreText.text = $"{Score:D5}";
     }
 
     // Swap 들어왔을 때

@@ -10,17 +10,8 @@ public class Client : MonoBehaviour
     TcpClient client;
     NetworkStream networkStream;
     Thread thread;
-    //RivalBoard Rival;
 
-    void Start()
-    {
-        ConnectToServer("127.0.0.1", 9000);
-        //GameObject parent = GetComponentInParent<Transform>().gameObject;
-        //DontDestroyOnLoad(parent);
-        //Rival = FindAnyObjectByType<RivalBoard>();
-    }
-
-    void ConnectToServer(string ip, int port)
+    public void ConnectToServer(string ip, int port)
     {
         try
         {
@@ -32,6 +23,8 @@ public class Client : MonoBehaviour
 
             thread = new Thread(RecvData);
             thread.Start();
+            GameManager.s_isNetworkOn = true;
+            SceneManager.LoadScene(Define.MatchGameScene);
         }
         catch (Exception ex)
         {
@@ -55,10 +48,8 @@ public class Client : MonoBehaviour
 
                 string msg = Encoding.UTF8.GetString(buffer, 0, bytes);
                 string[] messages = msg.Split(' ');
-                //Debug.Log($"Received from server: {msg}");
                 if (messages[0] == "MATCHED")
                 {
-                    //string[] playerName = messages[1].Split(' ');
                     Debug.Log("Matching Success!!!");
                     ClientReceiveProcessor.Enqueue(() =>
                     {
@@ -141,7 +132,10 @@ public class Client : MonoBehaviour
         {
             Debug.LogError($"Receive Error: {e.Message}");
             ClientReceiveProcessor.Enqueue(() =>
-            SceneManager.LoadScene(Define.MainScene)
+            {
+                GameManager.s_isNetworkOn = false;
+                SceneManager.LoadScene(Define.MainScene);
+            }
             );
         }
     }

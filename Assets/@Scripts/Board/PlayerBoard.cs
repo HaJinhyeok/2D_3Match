@@ -15,18 +15,17 @@ public static class MouseData
 
 public class PlayerBoard : Board
 {
+    // Test용?
     public Button CheckButton;
     public Button ChangeButton;
     public Text CheckResultText;
 
+    public Button PreferenceButton;
+    public GameObject PausePanelObject;
+
     public static Action OnGameStart;
     public static Action OnGameFinish;
     public static Action OnRivalConnectionError;
-
-
-    //public Button TestButton;
-    //public Button RemoveButton;
-    //public Button MakeButton;
 
     bool _isBlockMoving = false;
     bool _isChecking = false;
@@ -36,6 +35,10 @@ public class PlayerBoard : Board
     #region Life Cycle
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            OnPreferenceButtonClick();
+        }
         if (_isTimeFlowing)
         {
             GameManager.Instance.CurrentTime -= Time.deltaTime;
@@ -77,6 +80,7 @@ public class PlayerBoard : Board
         OnGameStart += GameStart;
         OnGameFinish += () => StartCoroutine(FinishGame());
         OnRivalConnectionError += RivalConnectionError;
+        PreferenceButton.onClick.AddListener(OnPreferenceButtonClick);
 
         if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
         {
@@ -91,34 +95,29 @@ public class PlayerBoard : Board
             ChangeButton.onClick.AddListener(OnChangeButtonClick);
             GameStart();
         }
-
-        // Test용 버튼들
-        //TestButton.onClick.AddListener(OnTestButtonClick);
-        //RemoveButton.onClick.AddListener(OnRemoveButtonClick);
-        //MakeButton.onClick.AddListener(OnMakeButtonClick);
     }
 
     private void OnDestroy()
     {
         OnGameStart -= GameStart;
-        //OnGameFinish -= FinishGame;
         OnGameFinish = null;
         OnRivalConnectionError -= RivalConnectionError;
     }
     #endregion
 
     #region General Methods
+    // 게임 시작 - 블록 생성, 텍스트 초기화 등
     public void GameStart()
     {
         CreateRandomBlocks();
         Invoke("MakeBlocks", Time.deltaTime);
         Score = 0;
-        ScoreText.text = $"SCORE: {Score}";
-        //GameManager.Instance.GameStatus.PlayerScore = Score;
+        ScoreText.text = $"{Score:D5}";
         GameManager.Instance.GameInitialize();
         _isTimeFlowing = true;
     }
 
+    // 보드판 블록 생성
     void CreateRandomBlocks()
     {
         // IOCP 서버 전달용 string(임시)
@@ -136,7 +135,6 @@ public class PlayerBoard : Board
             block.AddComponent<EventTrigger>();
             // block에 event 추가
             AddEvent(block, EventTriggerType.BeginDrag, delegate { OnStartDrag(block); });
-            //AddEvent(block, EventTriggerType.Drag, delegate{ OnDrag(block); });
             AddEvent(block, EventTriggerType.EndDrag, delegate { OnEndDrag(block); });
             AddEvent(block, EventTriggerType.PointerEnter, delegate { StartCoroutine(OnEnterBlock(block)); });
 
@@ -155,10 +153,14 @@ public class PlayerBoard : Board
                 clientData += "\n";
             else clientData += " ";
         }
-        GameManager.Client.SendMessageToServer(clientData);
+        if (GameManager.s_isNetworkOn)
+        {
+            GameManager.Client.SendMessageToServer(clientData);
+        }
 
     }
 
+    // 보드판 갈아엎기
     IEnumerator ChangeAllBlockImages()
     {
         _isBlockMoving = true;
@@ -174,12 +176,22 @@ public class PlayerBoard : Board
         MakeBlocks();
     }
 
+    // 게임 종료 - 블록 움직임 정지, 결과 서버 전달 등
     public IEnumerator FinishGame()
     {
         string clientData = $"{(int)Define.DataStatus.Finish}\n{Score}";
         _isChecking = false;
+        GameManager.s_isFinished = true;
+        // 종료 시점에 PausePanel 켜져 있으면 꺼버리기
+        if(GameManager.Instance.IsPaused)
+        {
+            GameManager.Instance.IsPaused = false;
+        }
         StopAllCoroutines();
-        GameManager.Client.SendMessageToServer(clientData);
+        if (GameManager.s_isNetworkOn)
+        {
+            GameManager.Client.SendMessageToServer(clientData);
+        }
         GameManager.Instance.GameStatus.PlayerScore = Score;
 
         // 매치 게임일 때
@@ -197,16 +209,39 @@ public class PlayerBoard : Board
             GameManager.Instance.GameStatus.GameResult = Define.FinishText;
             ResultPanel.OnResultPanelOn?.Invoke();
         }
-        //ClearBoard();
     }
 
+    // 상대방 연결 끊겼을 시
     public void RivalConnectionError()
     {
         _isChecking = false;
+        _isTimeFlowing = false;
         StopAllCoroutines();
         GameManager.Instance.GameStatus.OnRivalConnectionError();
         ResultPanel.OnResultPanelOn?.Invoke();
         ClearBoard();
+    }
+
+    // Exit Button 눌렀을 때
+    public void OnPreferenceButtonClick()
+    {
+        if (GameManager.s_isFinished)
+            return;
+        // Pause Panel On/Off
+        GameManager.Instance.IsPaused = !GameManager.Instance.IsPaused;
+        PausePanelObject.SetActive(GameManager.Instance.IsPaused);
+        // 솔로 게임 중이면 일시정지 기능
+        if (!GameManager.s_isNetworkOn)
+        {
+            if (GameManager.Instance.IsPaused)
+            {
+                Time.timeScale = 0f;
+            }
+            else
+            {
+                Time.timeScale = 1f;
+            }
+        }
     }
     #endregion
 
@@ -346,7 +381,6 @@ public class PlayerBoard : Board
                 List<int> tmp = new List<int>(blocks);
                 blocksOfLine.Add(tmp);
             }
-            //return blocksOfLine.Count > 0 ? blocksOfLine : null;
             return blocksOfLine;
         }
         // flag == false이면 idx번째 row 조사
@@ -386,7 +420,7 @@ public class PlayerBoard : Board
 
     // 블록 움직였을 때 3매치가 만들어지는지 여부 검사
     // 블록 움직여서 3매치가 하나라도 만들어지면 true
-    // column%2==0 && row%2==0인 블록에 대해서만 실시
+    // column%2==0 || row%2==0인 블록에 대해서만 실시
     // 해당 블록
     bool Is3MatchPossible()
     {
@@ -459,14 +493,15 @@ public class PlayerBoard : Board
         if (blockA.transform.localPosition.x != blockB.transform.localPosition.x
             && blockA.transform.localPosition.y != blockB.transform.localPosition.y)
             yield return null;
-        // 교환 일어나면, 더 이상 드래그해도 교환 없도록 마우스정보 초기화
-        // MouseData.StartBlock = null;
         MouseData.IsDragging = false;
         // 두 블록의 위치가 바뀌는 애니메이션을 어떻게?
         // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
         // 이때, 움직임은 코루틴으로 표현
         string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
-        GameManager.Client.SendMessageToServer(clientData);
+        if (GameManager.s_isNetworkOn)
+        {
+            GameManager.Client.SendMessageToServer(clientData);
+        }
         yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
     }
 
@@ -503,7 +538,10 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            GameManager.Client.SendMessageToServer(clientData);
+            if (GameManager.s_isNetworkOn)
+            {
+                GameManager.Client.SendMessageToServer(clientData);
+            }
             clientData = "";
             DestroyMatchBlocks(matchBlocks);
         }
@@ -531,7 +569,6 @@ public class PlayerBoard : Board
             for (int j = 0; j < tmp.Count; j++)
             {
                 matches.Add(tmp[j]);
-                //PrintList(tmp[j]);
             }
         }
 
@@ -541,7 +578,6 @@ public class PlayerBoard : Board
             for (int j = 0; j < tmp.Count; j++)
             {
                 matches.Add(tmp[j]);
-                //PrintList(tmp[j]);
             }
         }
 
@@ -551,7 +587,6 @@ public class PlayerBoard : Board
             for (int j = 0; j < tmp.Count; j++)
             {
                 matches.Add(tmp[j]);
-                //PrintList(tmp[j]);
             }
         }
 
@@ -565,7 +600,10 @@ public class PlayerBoard : Board
                 if (i != 0) clientData += ' ';
                 clientData += matchBlocks[i].ToString();
             }
-            GameManager.Client.SendMessageToServer(clientData);
+            if (GameManager.s_isNetworkOn)
+            {
+                GameManager.Client.SendMessageToServer(clientData);
+            }
             DestroyMatchBlocks(matchBlocks);
         }
         return true;
@@ -678,8 +716,11 @@ public class PlayerBoard : Board
                     clientData += '\n';
                 }
             }
-            GameManager.Client.SendMessageToServer(hideBlockData);
-            GameManager.Client.SendMessageToServer(clientData);
+            if (GameManager.s_isNetworkOn)
+            {
+                GameManager.Client.SendMessageToServer(hideBlockData);
+                GameManager.Client.SendMessageToServer(clientData);
+            }
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
         }

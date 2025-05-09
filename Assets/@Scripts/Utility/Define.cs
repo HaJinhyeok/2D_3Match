@@ -1,5 +1,10 @@
 public static class Define
 {
+    #region
+    public const int PORT = 9000;
+    public const string address = "127.0.0.1";
+    #endregion
+
     public enum DataStatus : int
     {
         // 게임 플레이 관련

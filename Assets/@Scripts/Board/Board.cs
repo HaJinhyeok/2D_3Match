@@ -124,7 +124,7 @@ public class Board : MonoBehaviour
                 _score++;
             }
         }
-        ScoreText.text = $"SCORE: {_score}";
+        ScoreText.text = $"{_score:D5}";
     }
 
     protected IEnumerator CoMoveBlocks(List<List<GameObject>> movingBlocks)
