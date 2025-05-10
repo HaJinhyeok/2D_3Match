@@ -4,11 +4,11 @@ using UnityEngine.UI;
 
 public class UI_Main : MonoBehaviour
 {
-    public Button SoloPlayButton;
-    public Button MatchPlayButton;
-    public Button ExitButton;
-
-    public Text ScreenText;
+    [SerializeField] Button SoloPlayButton;
+    [SerializeField] Button MatchPlayButton;
+    [SerializeField] Button ExitButton;
+    [SerializeField] Text ScreenText;
+    [SerializeField] AudioSource ButtonSound;
 
     void Start()
     {
@@ -23,16 +23,19 @@ public class UI_Main : MonoBehaviour
 
     public void OnSoloPlayButtonClick()
     {
+        ButtonSound.Play();
         SceneManager.LoadScene(Define.SoloGameScene);
     }
 
     public void OnMatchPlayButton()
     {
+        ButtonSound.Play();
         GameManager.Client.ConnectToServer(Define.address, Define.PORT);
     }
 
     public void OnExitButtonClick()
     {
+        ButtonSound.Play();
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else

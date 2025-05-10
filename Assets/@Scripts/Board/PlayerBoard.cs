@@ -545,6 +545,7 @@ public class PlayerBoard : Board
             clientData = "";
             DestroyMatchBlocks(matchBlocks);
         }
+        Audios.OnBlockSoundPlay?.Invoke();
         return true;
     }
 
@@ -606,6 +607,7 @@ public class PlayerBoard : Board
             }
             DestroyMatchBlocks(matchBlocks);
         }
+        Audios.OnBlockSoundPlay?.Invoke();
         return true;
     }
 

@@ -30,7 +30,15 @@ public class ResultPanel : MonoBehaviour
     {
         gameObject.SetActive(true);
         GameResultText.text = GameManager.Instance.GameStatus.GameResult;
-        PlayerScoreText.text = $"{GameManager.Instance.GameStatus.PlayerScore}Á¡";
+        if (GameManager.Instance.GameStatus.GameResult == Define.LoseText)
+        {
+            Audios.OnLoseSoundPlay?.Invoke();
+        }
+        else
+        {
+            Audios.OnWinSoundPlay?.Invoke();
+        }
+            PlayerScoreText.text = $"{GameManager.Instance.GameStatus.PlayerScore}Á¡";
         if (GameManager.s_isNetworkOn)
         {
             RivalScoreText.text = $"{GameManager.Instance.GameStatus.RivalScore}Á¡";
@@ -39,6 +47,7 @@ public class ResultPanel : MonoBehaviour
 
     void OnNextGameButtonClick()
     {
+        Audios.OnButtonSoundPlay?.Invoke();
         PlayerBoard player = FindAnyObjectByType<PlayerBoard>();
         player.ClearBoard();
         if (!GameManager.s_isNetworkOn)
@@ -57,6 +66,7 @@ public class ResultPanel : MonoBehaviour
 
     void OnBackButtonClick()
     {
+        Audios.OnButtonSoundPlay?.Invoke();
         if (GameManager.s_isNetworkOn)
         {
             GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");

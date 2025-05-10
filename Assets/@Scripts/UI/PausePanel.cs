@@ -24,6 +24,7 @@ public class PausePanel : MonoBehaviour
 
     void OnExitButtonClick()
     {
+        Audios.OnPreferenceSoundPlay?.Invoke();
         // 매치 게임 중이면
         if(GameManager.s_isNetworkOn)
         {
@@ -40,11 +41,13 @@ public class PausePanel : MonoBehaviour
 
     void OnContinueButtonClick()
     {
+        Audios.OnPreferenceSoundPlay?.Invoke();
         GameManager.Instance.IsPaused = false;
     }
 
     void PausePanelOff()
     {
+        Audios.OnPreferenceSoundPlay?.Invoke();
         // 솔로 게임 중이면
         if (!GameManager.s_isNetworkOn)
         {
