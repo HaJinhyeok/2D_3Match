@@ -23,6 +23,7 @@ public class RivalBoard : Board
 
             _blocks[x, y] = block.GetComponent<Block>();
             _blocks[x, y].SetBlockImagePadding(_space);
+            _blocks[x, y].BlockHintOff();
             _blockDictionary.Add(block, _blocks[x, y]);
             block.name = $"RivalBlock{i}";
         }

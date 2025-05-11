@@ -22,7 +22,7 @@ public static class Define
     }
 
     #region Constants
-    public const float TimeLimit = 10f;
+    public const float TimeLimit = 15f;
     #endregion
 
     #region Path
@@ -39,7 +39,7 @@ public static class Define
     #region Status Text
     public const string PossibleText = "Possible";
     public const string ImpossibleText = "Impossible";
-    public const string NewBoardText = "불판 교체";
+    public const string NewBoardText = "3매치 불가\n보드 교체";
 
     public const string WinText = "승리!";
     public const string LoseText = "패배...";

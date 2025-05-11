@@ -15,11 +15,7 @@ public static class MouseData
 
 public class PlayerBoard : Board
 {
-    // Test용?
-    public Button CheckButton;
-    public Button ChangeButton;
     public Text CheckResultText;
-
     public Button PreferenceButton;
     public GameObject PausePanelObject;
 
@@ -30,7 +26,7 @@ public class PlayerBoard : Board
     bool _isBlockMoving = false;
     bool _isChecking = false;
     float _timeCount;
-    const float _checkCoolTime = 3f;
+    const float _checkCoolTime = 2f;
 
     #region Life Cycle
     private void Update()
@@ -57,10 +53,6 @@ public class PlayerBoard : Board
             {
                 _timeCount = 0;
                 _isChecking = false;
-                if (CheckResultText != null)
-                {
-                    OnCheckButtonClick();
-                }
                 if (!Is3MatchPossible())
                 {
                     StartCoroutine(CoChangeAllBlocks());
@@ -82,17 +74,13 @@ public class PlayerBoard : Board
         OnRivalConnectionError += RivalConnectionError;
         PreferenceButton.onClick.AddListener(OnPreferenceButtonClick);
 
-        if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
+        if (GameManager.s_isNetworkOn)
         {
             GameManager.Client.SendMessageToServer("MATCH");
-            CheckButton = null;
-            ChangeButton = null;
             CheckResultText = null;
         }
-        else if (SceneManager.GetActiveScene().name == Define.SoloGameScene)
+        else if (!GameManager.s_isNetworkOn)
         {
-            CheckButton.onClick.AddListener(OnCheckButtonClick);
-            ChangeButton.onClick.AddListener(OnChangeButtonClick);
             GameStart();
         }
     }
@@ -144,6 +132,7 @@ public class PlayerBoard : Board
 
             _blocks[x, y] = block.GetComponent<Block>();
             _blocks[x, y].SetBlockImagePadding(_space);
+            _blocks[x, y].BlockHintOff();
             _blockDictionary.Add(block, _blocks[x, y]);
             block.name = $"Block{i}";
 
@@ -176,6 +165,28 @@ public class PlayerBoard : Board
         MakeBlocks();
     }
 
+    IEnumerator CoTextVanish()
+    {
+        Color color = CheckResultText.color;
+        yield return new WaitForSeconds(1.5f);
+        color.a = 0f;
+        CheckResultText.color = color;
+    }
+
+    IEnumerator CoChangeAllBlocks()
+    {
+        if (CheckResultText != null)
+        {
+            Color color = CheckResultText.color;
+            color.a = 1f;
+            CheckResultText.color = color;
+            CheckResultText.text = Define.NewBoardText;
+            StartCoroutine(CoTextVanish());
+        }
+        yield return new WaitForSeconds(0.5f);
+        StartCoroutine(ChangeAllBlockImages());
+    }
+
     // 게임 종료 - 블록 움직임 정지, 결과 서버 전달 등
     public IEnumerator FinishGame()
     {
@@ -183,7 +194,7 @@ public class PlayerBoard : Board
         _isChecking = false;
         GameManager.s_isFinished = true;
         // 종료 시점에 PausePanel 켜져 있으면 꺼버리기
-        if(GameManager.Instance.IsPaused)
+        if (GameManager.Instance.IsPaused)
         {
             GameManager.Instance.IsPaused = false;
         }
@@ -195,7 +206,7 @@ public class PlayerBoard : Board
         GameManager.Instance.GameStatus.PlayerScore = Score;
 
         // 매치 게임일 때
-        if (SceneManager.GetActiveScene().name == Define.MatchGameScene)
+        if (GameManager.s_isNetworkOn)
         {
             // 만약 상대방의 게임이 아직 끝나지 않았으면, 끝날 때까지 대기
             if (GameManager.Instance.GameStatus.IsRivalPlaying)
@@ -204,7 +215,7 @@ public class PlayerBoard : Board
             }
         }
         // 솔로 게임일 때
-        if (SceneManager.GetActiveScene().name == Define.SoloGameScene)
+        if (!GameManager.s_isNetworkOn)
         {
             GameManager.Instance.GameStatus.GameResult = Define.FinishText;
             ResultPanel.OnResultPanelOn?.Invoke();
@@ -301,6 +312,7 @@ public class PlayerBoard : Board
                     {
                         yield return StartCoroutine(CoSwapBlocks(enterBlock, startBlock));
                         _isBlockMoving = false;
+                        _isChecking = true;
                     }
                     else
                     {
@@ -432,11 +444,13 @@ public class PlayerBoard : Board
                 // 아랫블록과 교환했을 때 확인
                 if (i < _numOfColumn - 1 && Is3MatchPossibleOnBlocks(i * _numOfColumn + j, (i + 1) * _numOfColumn + j))
                 {
+                    GiveHintOnBlocks(i, j, i + 1, j);
                     return true;
                 }
                 // 윗블록과 교환했을 때 확인
                 if (i > 0 && Is3MatchPossibleOnBlocks(i * _numOfColumn + j, (i - 1) * _numOfColumn + j))
                 {
+                    GiveHintOnBlocks(i, j, i - 1, j);
                     return true;
                 }
             }
@@ -449,11 +463,13 @@ public class PlayerBoard : Board
                 // 오른쪽 블록과 교환했을 때 확인
                 if (i < _numOfColumn - 1 && Is3MatchPossibleOnBlocks(j * _numOfColumn + i, j * _numOfColumn + i + 1))
                 {
+                    GiveHintOnBlocks(j, i, j, i + 1);
                     return true;
                 }
                 // 왼쪽 블록과 교환했을 때 확인
                 if (i > 0 && Is3MatchPossibleOnBlocks(j * _numOfColumn + i, j * _numOfColumn + i - 1))
                 {
+                    GiveHintOnBlocks(j, i, j, i - 1);
                     return true;
                 }
             }
@@ -481,6 +497,13 @@ public class PlayerBoard : Board
         _blocks[x1, y1].BlockImage.sprite = firstImage;
         _blocks[x2, y2].BlockImage.sprite = secondImage;
         return flag;
+    }
+
+    // first번 블록과 second번 블록의 HintEffect 출력
+    void GiveHintOnBlocks(int x1, int y1, int x2, int y2)
+    {
+        _blocks[x1, y1].BlockHintOn();
+        _blocks[x2, y2].BlockHintOn();
     }
     #endregion
 
@@ -519,6 +542,7 @@ public class PlayerBoard : Board
     void MakeBlocks()
     {
         _isBlockMoving = true;
+        _isChecking = false;
         StartCoroutine(CoMakeBlocks());
     }
 
@@ -745,32 +769,9 @@ public class PlayerBoard : Board
         }
         StartCoroutine(CoTextVanish());
     }
-
-    IEnumerator CoTextVanish()
-    {
-        Color color = CheckResultText.color;
-        yield return new WaitForSeconds(2f);
-        color.a = 0f;
-        CheckResultText.color = color;
-    }
-
     public void OnChangeButtonClick()
     {
         StartCoroutine(CoChangeAllBlocks());
-    }
-
-    IEnumerator CoChangeAllBlocks()
-    {
-        if (CheckResultText != null)
-        {
-            Color color = CheckResultText.color;
-            color.a = 1f;
-            CheckResultText.color = color;
-            CheckResultText.text = Define.NewBoardText;
-        }
-        StartCoroutine(CoTextVanish());
-        yield return new WaitForSeconds(2f);
-        StartCoroutine(ChangeAllBlockImages());
     }
 
     public void OnTestButtonClick()

@@ -7,7 +7,8 @@ using UnityEngine.VFX;
 public class Block : MonoBehaviour
 {
     public Image BlockImage;
-    public VisualEffect BlockCrashEffect;
+    [SerializeField] VisualEffect BlockCrashEffect;
+    [SerializeField] VisualEffect BlockHintEffect;
 
     public bool IsEmpty
     {
@@ -34,6 +35,12 @@ public class Block : MonoBehaviour
         TurnOnBlock();
     }
 
+    public void SetBlockImagePadding(Vector2 padding)
+    {
+        RectTransform rect = BlockImage.GetComponent<RectTransform>();
+        rect.sizeDelta = -2 * padding;
+    }
+
     public void BlockCrash()
     {
         BlockCrashEffect.transform.position = transform.position;
@@ -41,9 +48,15 @@ public class Block : MonoBehaviour
         //BlockCrashEffect.SendEvent("OnPlay");
     }
 
-    public void SetBlockImagePadding(Vector2 padding)
+    public void BlockHintOn()
     {
-        RectTransform rect = BlockImage.GetComponent<RectTransform>();
-        rect.sizeDelta = -2 * padding;
+        BlockHintEffect.transform.position = transform.position;
+        BlockHintEffect.Play();
+        Invoke("BlockHintOff", 1.5f);
+    }
+
+    public void BlockHintOff()
+    {
+        BlockHintEffect.Stop();
     }
 }

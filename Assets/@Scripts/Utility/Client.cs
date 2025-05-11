@@ -65,6 +65,15 @@ public class Client : MonoBehaviour
                     ClientReceiveProcessor.Enqueue(() =>
                     UI_Waiting.OnWaitingAction?.Invoke(true));
                 }
+                else if (messages[0] == "MATCH_FULL")
+                {
+                    Debug.Log("Match is already ongoing...");
+                    ClientReceiveProcessor.Enqueue(() =>
+                    {
+                        SceneManager.LoadScene(Define.MainScene);
+                        GameManager.s_isNetworkOn = false;
+                    });
+                }
                 else if (messages[0] == Define.RivalConnectionError)
                 {
                     Debug.Log(Define.RivalConnectionFailText);
