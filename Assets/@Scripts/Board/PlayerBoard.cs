@@ -297,7 +297,11 @@ public class PlayerBoard : Board
             // 두 블록이 대각선 위치이면 이동 x
             if (Mathf.Abs(localPosDifference.x) > _size.x - _space.x && Mathf.Abs(localPosDifference.y) > _size.y - _space.y)
             {
-                Debug.Log("이동 불가");
+                MouseData.IsDragging = false;
+            }
+            // 두 칸 이상 떨어진 블록 이동 불가
+            else if (Mathf.Abs(localPosDifference.x) > _blockSize.x + 5 || Mathf.Abs(localPosDifference.y) > _blockSize.y + 5)
+            {
                 MouseData.IsDragging = false;
             }
             else
@@ -320,7 +324,6 @@ public class PlayerBoard : Board
                     }
                 }
             }
-
         }
         yield return null;
     }
@@ -511,21 +514,26 @@ public class PlayerBoard : Board
 
     protected IEnumerator CoSwapBlocks(Block blockA, Block blockB)
     {
+        Vector2 localPosDifference = blockB.transform.localPosition - blockA.transform.localPosition;
+        // 동일 블록 이동 불가
         if (blockA == blockB)
             yield return null;
-        if (blockA.transform.localPosition.x != blockB.transform.localPosition.x
-            && blockA.transform.localPosition.y != blockB.transform.localPosition.y)
-            yield return null;
-        MouseData.IsDragging = false;
-        // 두 블록의 위치가 바뀌는 애니메이션을 어떻게?
-        // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
-        // 이때, 움직임은 코루틴으로 표현
-        string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
-        if (GameManager.s_isNetworkOn)
+        //// 대각선 블록 이동 불가
+        //else if (Mathf.Abs(localPosDifference.x)<=_space.x && localPosDifference.y != 0)
+        //    yield return null;
+        else
         {
-            GameManager.Client.SendMessageToServer(clientData);
-        }
-        yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
+            MouseData.IsDragging = false;
+            // 두 블록의 위치가 바뀌는 애니메이션을 어떻게?
+            // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
+            // 이때, 움직임은 코루틴으로 표현
+            string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
+            if (GameManager.s_isNetworkOn)
+            {
+                GameManager.Client.SendMessageToServer(clientData);
+            }
+            yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
+        }            
     }
 
     IEnumerator CoMakeBlocks()
