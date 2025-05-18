@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using System.Collections;
 using System;
 using UnityEngine.SceneManagement;
+using System.Text;
 
 public static class MouseData
 {
@@ -76,7 +77,9 @@ public class PlayerBoard : Board
 
         if (GameManager.s_isNetworkOn)
         {
-            GameManager.Client.SendMessageToServer("MATCH");
+            //GameManager.Client.SendMessageToServer("MATCH");
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST);
+            GameManager.Client.SendMessageToServer(clientData);
             CheckResultText = null;
         }
         else if (!GameManager.s_isNetworkOn)
@@ -108,9 +111,10 @@ public class PlayerBoard : Board
     // 보드판 블록 생성
     void CreateRandomBlocks()
     {
-        // IOCP 서버 전달용 string(임시)
+        // IOCP 서버 전달용 string
         int[,] blockStatus = new int[_numOfColumn, _numOfColumn];
-        string clientData = $"{(int)Define.DataStatus.Start}\n";
+        string data = "";
+        //string clientData = $"{(int)Define.DataStatus.Start}\n";
         int x, y;
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -137,14 +141,17 @@ public class PlayerBoard : Board
             block.name = $"Block{i}";
 
             blockStatus[x, y] = rnd;
-            clientData += rnd.ToString();
+            data += rnd.ToString();
             if (y == _numOfColumn - 1)
-                clientData += "\n";
-            else clientData += " ";
+                data += "\n";
+            else data += " ";
         }
         if (GameManager.s_isNetworkOn)
         {
-            GameManager.Client.SendMessageToServer(clientData);
+            //GameManager.Client.SendMessageToServer(data);
+            byte[] packetData=Encoding.UTF8.GetBytes(data);
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_START, packetData);
+            GameManager.Client.SendMessageToServer(packetData);
         }
 
     }
@@ -190,7 +197,8 @@ public class PlayerBoard : Board
     // 게임 종료 - 블록 움직임 정지, 결과 서버 전달 등
     public IEnumerator FinishGame()
     {
-        string clientData = $"{(int)Define.DataStatus.Finish}\n{Score}";
+        //string clientData = $"{(int)Define.DataStatus.Finish}\n{Score}";
+        string data = $"{Score}";
         _isChecking = false;
         GameManager.s_isFinished = true;
         // 종료 시점에 PausePanel 켜져 있으면 꺼버리기
@@ -201,6 +209,8 @@ public class PlayerBoard : Board
         StopAllCoroutines();
         if (GameManager.s_isNetworkOn)
         {
+            byte[] packetData=Encoding.UTF8.GetBytes(data);
+            byte[] clientData=PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_FINISH, packetData);
             GameManager.Client.SendMessageToServer(clientData);
         }
         GameManager.Instance.GameStatus.PlayerScore = Score;
@@ -527,7 +537,10 @@ public class PlayerBoard : Board
             // 두 블록의 위치가 바뀌는 애니메이션을 어떻게?
             // 두 블록의 이미지 위치를 lerp함수로 바꾼다.
             // 이때, 움직임은 코루틴으로 표현
-            string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
+            //string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
+            string data = $"{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
+            byte[] packetData=Encoding.UTF8.GetBytes(data);
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_SWAP, packetData);
             if (GameManager.s_isNetworkOn)
             {
                 GameManager.Client.SendMessageToServer(clientData);
@@ -564,17 +577,26 @@ public class PlayerBoard : Board
             return false;
         foreach (List<int> matchBlocks in matches)
         {
-            string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            //string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            string data = "";
             for (int i = 0; i < matchBlocks.Count; i++)
             {
-                if (i != 0) clientData += ' ';
-                clientData += matchBlocks[i].ToString();
+                if (i != 0)
+                {
+                    //clientData += ' ';
+                    data += ' ';
+                }
+                //clientData += matchBlocks[i].ToString();
+                data += matchBlocks[i].ToString();
             }
             if (GameManager.s_isNetworkOn)
             {
+                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_DESTROY, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
-            clientData = "";
+            //clientData = "";
+            data = "";
             DestroyMatchBlocks(matchBlocks);
         }
         Audios.OnBlockSoundPlay?.Invoke();
@@ -627,14 +649,22 @@ public class PlayerBoard : Board
             return false;
         foreach (List<int> matchBlocks in matches)
         {
-            string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            //string clientData = $"{(int)Define.DataStatus.Destroy}\n";
+            string data = "";
             for (int i = 0; i < matchBlocks.Count; i++)
             {
-                if (i != 0) clientData += ' ';
-                clientData += matchBlocks[i].ToString();
+                if (i != 0)
+                {
+                    //clientData += ' ';
+                    data += ' ';
+                }
+                //clientData += matchBlocks[i].ToString();
+                data += matchBlocks[i].ToString();
             }
             if (GameManager.s_isNetworkOn)
             {
+                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_DESTROY, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
             DestroyMatchBlocks(matchBlocks);
@@ -655,7 +685,8 @@ public class PlayerBoard : Board
         bool isEmptyBlockExist = false;
         // 새로 생성될 블록을 포함하여 밑으로 이동될 블록들
         List<List<GameObject>> movingBlocks = new List<List<GameObject>>();
-        string hideBlockData = $"{(int)Define.DataStatus.Hide}\n";
+        string hideData = "";
+        //string hideBlockData = $"{(int)Define.DataStatus.Hide}\n";
 
         // 각 column에서 어느 자리의 블록이 비었는지 확인
         // 새로 생성해야할 블록 개수 == 빈 블록 개수
@@ -692,7 +723,8 @@ public class PlayerBoard : Board
                         image1.sprite = _blocks[i, j].BlockImage.sprite;
                         movingBlocks[j].Add(block);
                         _blocks[i, j].TurnOffBlock();
-                        hideBlockData += $"{i},{j} ";
+                        //hideBlockData += $"{i},{j} ";
+                        hideData += $"{i},{j} ";
                     }
                 }
             }
@@ -730,7 +762,8 @@ public class PlayerBoard : Board
         }
         else
         {
-            string clientData = $"{(int)Define.DataStatus.Generate}\n";
+            //string clientData = $"{(int)Define.DataStatus.Generate}\n";
+            string data = "";
             foreach (List<GameObject> gameObjects in movingBlocks)
             {
                 foreach (GameObject go in gameObjects)
@@ -738,21 +771,29 @@ public class PlayerBoard : Board
                     string name = go.GetComponent<Image>().sprite.name;
                     Vector2 pos = go.GetComponent<RectTransform>().localPosition;
                     // 이미지 번호 - 위치 x좌표 - 위치 y좌표
-                    clientData += $"{name[0]} {pos.x} {pos.y}";
+                    //clientData += $"{name[0]} {pos.x} {pos.y}";
+                    data += $"{name[0]} {pos.x} {pos.y}";
                     // 배열의 마지막 요소를 가리키는 인덱스 표기법
                     if (go != gameObjects[^1])
                     {
-                        clientData += ',';
+                        //clientData += ',';
+                        data += ',';
                     }
                 }
                 if (gameObjects != movingBlocks[^1])
                 {
-                    clientData += '\n';
+                    //clientData += '\n';
+                    data += '\n';
                 }
             }
             if (GameManager.s_isNetworkOn)
             {
+                byte[] hidePacketData = Encoding.UTF8.GetBytes(hideData);
+                byte[] hideBlockData = PacketBuilder.BuildPacketData(PacketType.PACKET_HIDE, hidePacketData);
                 GameManager.Client.SendMessageToServer(hideBlockData);
+
+                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_GENERATE, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
             // 블록들 밑으로 내려주기

@@ -1,3 +1,5 @@
+using System;
+
 public static class Define
 {
     #region
@@ -19,7 +21,7 @@ public static class Define
         Finish,
         RivalConnectionClosed,
         ExitMatch,
-    }
+    };
 
     #region Constants
     public const float TimeLimit = 300f;

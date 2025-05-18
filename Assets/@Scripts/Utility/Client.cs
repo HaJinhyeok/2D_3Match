@@ -42,9 +42,114 @@ public class Client : MonoBehaviour
                 int bytes = networkStream.Read(buffer, 0, buffer.Length);
                 if (bytes <= 0)
                 {
-                    Debug.LogWarning("Server disdconnected.");
+                    Debug.LogWarning("Server disconnected.");
                     break;
                 }
+
+                ushort size = BitConverter.ToUInt16(buffer, 0);
+                ushort type = BitConverter.ToUInt16(buffer, 2);
+                string data = BitConverter.ToString(buffer, 4);
+
+                switch ((PacketType)type)
+                {
+                    case PacketType.PACKET_MATCH_REQUEST:
+                        break;
+
+                    case PacketType.PACKET_MATCH_WAITING:
+                        Debug.Log("Waiting...");
+                        ClientReceiveProcessor.Enqueue(() =>
+                        UI_Waiting.OnWaitingAction?.Invoke(true));
+                        break;
+
+                    case PacketType.PACKET_MATCH_START:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        GameManager.Instance.Rival.StartGame(data));
+                        break;
+
+                    case PacketType.PACKET_MATCH_FINISH:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            GameManager.Instance.GameStatus.IsRivalPlaying = false;
+                            GameManager.Instance.GameStatus.RivalScore = int.Parse(data);
+                        });
+                        break;
+
+                    case PacketType.PACKET_MATCH_RESULT:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            GameManager.Instance.GameStatus.OnResultSetting(int.Parse(data));
+                            ResultPanel.OnResultPanelOn?.Invoke();
+                        });
+                        break;
+
+                    case PacketType.PACKET_MATCH_EXIT:
+                        break;
+
+                    case PacketType.PACKET_RESULT_WIN:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            GameManager.Instance.GameStatus.OnResultSetting(type);
+                            ResultPanel.OnResultPanelOn?.Invoke();
+                        });
+                        break;
+
+                    case PacketType.PACKET_RESULT_LOSE:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            GameManager.Instance.GameStatus.OnResultSetting(type);
+                            ResultPanel.OnResultPanelOn?.Invoke();
+                        });
+                        break;
+
+                    case PacketType.PACKET_RESULT_DRAW:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            GameManager.Instance.GameStatus.OnResultSetting(type);
+                            ResultPanel.OnResultPanelOn?.Invoke();
+                        });
+                        break;
+
+                    // 인게임 블록 이동 정보
+                    case PacketType.PACKET_SWAP:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        StartCoroutine(GameManager.Instance.Rival.SwapBlock(data)));
+                        break;
+
+                    case PacketType.PACKET_DESTROY:
+                        ClientReceiveProcessor.Enqueue(() =>
+                            GameManager.Instance.Rival.DestroyBlock(data));
+                        break;
+
+                    case PacketType.PACKET_GENERATE:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        GameManager.Instance.Rival.GenerateBlock(data));
+                        break;
+
+                    case PacketType.PACKET_HIDE:
+                        ClientReceiveProcessor.Enqueue(() =>
+                        GameManager.Instance.Rival.HideBlock(data));
+                        break;
+
+                    // 에러 및 예외처리
+                    case PacketType.PACKET_ERR_FULL:
+                        Debug.Log("Match is already ongoing...");
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            SceneManager.LoadScene(Define.MainScene);
+                            GameManager.s_isNetworkOn = false;
+                        });
+                        break;
+
+                    case PacketType.PACKET_ERR_DISCONNECTION:
+                        Debug.Log(Define.RivalConnectionFailText);
+                        ClientReceiveProcessor.Enqueue(() =>
+                        {
+                            PlayerBoard.OnRivalConnectionError?.Invoke();
+                            GameManager.Instance.Rival.FinishGame();
+                        });
+                        break;
+                }
+
 
                 string msg = Encoding.UTF8.GetString(buffer, 0, bytes);
                 string[] messages = msg.Split(' ');
@@ -155,6 +260,13 @@ public class Client : MonoBehaviour
             return;
 
         byte[] data = Encoding.UTF8.GetBytes(msg);
+        networkStream.Write(data, 0, data.Length);
+    }
+
+    public void SendMessageToServer(byte[] data)
+    {
+        if (networkStream == null || !networkStream.CanWrite)
+            return;
         networkStream.Write(data, 0, data.Length);
     }
 

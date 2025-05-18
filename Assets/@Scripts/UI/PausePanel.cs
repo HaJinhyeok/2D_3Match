@@ -28,7 +28,8 @@ public class PausePanel : MonoBehaviour
         // 매치 게임 중이면
         if(GameManager.s_isNetworkOn)
         {
-            GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
+            //GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
+            GameManager.Client.SendMessageToServer(PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_EXIT));
             GameManager.s_isNetworkOn = false;
         }
         else
