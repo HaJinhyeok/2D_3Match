@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -29,7 +30,9 @@ public class UI_Waiting : MonoBehaviour
 
     void OnExitButtonClick()
     {
-        GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
+        byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_EXIT);
+        GameManager.Client.SendMessageToServer(clientData);
+        //GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
         GameManager.s_isNetworkOn = false;
     }
 }

@@ -25,19 +25,19 @@ public class GameStatus
         GameResult = result;
     }
 
-    public void OnResultSetting(int result)
+    public void OnResultSetting(ushort result)
     {
-        switch (result)
+        switch ((PacketType)result)
         {
-            case 0:
+            case PacketType.PACKET_RESULT_WIN:
                 GameResult = Define.WinText;
                 break;
 
-            case 1:
+            case PacketType.PACKET_RESULT_LOSE:
                 GameResult = Define.LoseText;
                 break;
 
-            case 2:
+            case PacketType.PACKET_RESULT_DRAW:
                 GameResult = Define.DrawText;
                 break;
 

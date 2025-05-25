@@ -1,10 +1,12 @@
 
 using System;
+using UnityEngine;
 
 public enum PacketType : ushort
 {
     PACKET_MATCH_REQUEST = 0,
     PACKET_MATCH_WAITING,
+    PACKET_MATCH_COMPLETE,
     PACKET_MATCH_START,
     PACKET_MATCH_FINISH,
     PACKET_MATCH_RESULT,
@@ -41,6 +43,10 @@ public class PacketBuilder
         {
             Buffer.BlockCopy(data, 0, buffer, 4, data.Length);
         }
+        //if (type == PacketType.PACKET_GENERATE)
+        //{
+        //    Debug.Log($"Size: {size}, {BitConverter.ToString(data)}");
+        //}
         return buffer;
     }
 }

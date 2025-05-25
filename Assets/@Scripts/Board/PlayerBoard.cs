@@ -77,8 +77,9 @@ public class PlayerBoard : Board
 
         if (GameManager.s_isNetworkOn)
         {
+            byte[] testData = Encoding.UTF8.GetBytes("Hello");
             //GameManager.Client.SendMessageToServer("MATCH");
-            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST);
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST, testData);
             GameManager.Client.SendMessageToServer(clientData);
             CheckResultText = null;
         }
@@ -112,7 +113,6 @@ public class PlayerBoard : Board
     void CreateRandomBlocks()
     {
         // IOCP 서버 전달용 string
-        int[,] blockStatus = new int[_numOfColumn, _numOfColumn];
         string data = "";
         //string clientData = $"{(int)Define.DataStatus.Start}\n";
         int x, y;
@@ -140,7 +140,6 @@ public class PlayerBoard : Board
             _blockDictionary.Add(block, _blocks[x, y]);
             block.name = $"Block{i}";
 
-            blockStatus[x, y] = rnd;
             data += rnd.ToString();
             if (y == _numOfColumn - 1)
                 data += "\n";
@@ -149,9 +148,9 @@ public class PlayerBoard : Board
         if (GameManager.s_isNetworkOn)
         {
             //GameManager.Client.SendMessageToServer(data);
-            byte[] packetData=Encoding.UTF8.GetBytes(data);
+            byte[] packetData = Encoding.UTF8.GetBytes(data);
             byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_START, packetData);
-            GameManager.Client.SendMessageToServer(packetData);
+            GameManager.Client.SendMessageToServer(clientData);
         }
 
     }
@@ -209,8 +208,8 @@ public class PlayerBoard : Board
         StopAllCoroutines();
         if (GameManager.s_isNetworkOn)
         {
-            byte[] packetData=Encoding.UTF8.GetBytes(data);
-            byte[] clientData=PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_FINISH, packetData);
+            byte[] packetData = Encoding.UTF8.GetBytes(data);
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_FINISH, packetData);
             GameManager.Client.SendMessageToServer(clientData);
         }
         GameManager.Instance.GameStatus.PlayerScore = Score;
@@ -539,14 +538,14 @@ public class PlayerBoard : Board
             // 이때, 움직임은 코루틴으로 표현
             //string clientData = $"{(int)Define.DataStatus.Swap}\n{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
             string data = $"{blockA.name.Substring(5)} {blockB.name.Substring(5)}";
-            byte[] packetData=Encoding.UTF8.GetBytes(data);
+            byte[] packetData = Encoding.UTF8.GetBytes(data);
             byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_SWAP, packetData);
             if (GameManager.s_isNetworkOn)
             {
                 GameManager.Client.SendMessageToServer(clientData);
             }
             yield return StartCoroutine(CoSwapBlockImages(blockA, blockB));
-        }            
+        }
     }
 
     IEnumerator CoMakeBlocks()
@@ -591,7 +590,7 @@ public class PlayerBoard : Board
             }
             if (GameManager.s_isNetworkOn)
             {
-                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] packetData = Encoding.UTF8.GetBytes(data);
                 byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_DESTROY, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
@@ -663,7 +662,7 @@ public class PlayerBoard : Board
             }
             if (GameManager.s_isNetworkOn)
             {
-                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] packetData = Encoding.UTF8.GetBytes(data);
                 byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_DESTROY, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
@@ -789,11 +788,14 @@ public class PlayerBoard : Board
             if (GameManager.s_isNetworkOn)
             {
                 byte[] hidePacketData = Encoding.UTF8.GetBytes(hideData);
-                byte[] hideBlockData = PacketBuilder.BuildPacketData(PacketType.PACKET_HIDE, hidePacketData);
-                GameManager.Client.SendMessageToServer(hideBlockData);
+                byte[] hideClientData = PacketBuilder.BuildPacketData(PacketType.PACKET_HIDE, hidePacketData);
+                GameManager.Client.SendMessageToServer(hideClientData);
 
-                byte[] packetData=Encoding.UTF8.GetBytes(data);
+                byte[] packetData = Encoding.UTF8.GetBytes(data);
                 byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_GENERATE, packetData);
+                Debug.Log($"[SEND] GENERATE size={data.Length}\n packetData size={packetData.Length}\nclientData size={clientData.Length}");
+                Debug.Log(BitConverter.ToString(clientData));
+
                 GameManager.Client.SendMessageToServer(clientData);
             }
             // 블록들 밑으로 내려주기

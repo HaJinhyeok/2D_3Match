@@ -24,7 +24,7 @@ public static class Define
     };
 
     #region Constants
-    public const float TimeLimit = 300f;
+    public const float TimeLimit = 15f;
     #endregion
 
     #region Path
