@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -59,7 +58,6 @@ public class ResultPanel : MonoBehaviour
         {
             RivalBoard rival = FindAnyObjectByType<RivalBoard>();
             rival.ClearBoard();
-            //GameManager.Client.SendMessageToServer("MATCH");
             byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST);
             GameManager.Client.SendMessageToServer(clientData);
             UI_Waiting.OnWaitingAction?.Invoke(true);
@@ -72,7 +70,6 @@ public class ResultPanel : MonoBehaviour
         Audios.OnButtonSoundPlay?.Invoke();
         if (GameManager.s_isNetworkOn)
         {
-            //GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
             byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_EXIT);
             GameManager.Client.SendMessageToServer(clientData);
             GameManager.s_isNetworkOn = false;

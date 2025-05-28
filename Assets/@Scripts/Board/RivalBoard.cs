@@ -117,7 +117,7 @@ public class RivalBoard : Board
             string[] blockInfos = str.Split(',');
             foreach (string blockInfo in blockInfos)
             {
-                string[] info = blockInfo.Split(' ');
+                string[] info = blockInfo.Trim().Split(' ');
                 GameObject go = new GameObject("RivalMovingBlock" + i.ToString());
                 i++;
                 go.transform.SetParent(transform);

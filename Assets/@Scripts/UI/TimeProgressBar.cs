@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public class TimeProgressBar : MonoBehaviour
 {
-    public Image TimerFillImage;
+    [SerializeField] Image TimerFillImage;
 
     public static Action OnTimeChange;
 

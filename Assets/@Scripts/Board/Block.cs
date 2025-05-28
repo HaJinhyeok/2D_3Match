@@ -45,7 +45,6 @@ public class Block : MonoBehaviour
     {
         BlockCrashEffect.transform.position = transform.position;
         BlockCrashEffect.Play();
-        //BlockCrashEffect.SendEvent("OnPlay");
     }
 
     public void BlockHintOn()

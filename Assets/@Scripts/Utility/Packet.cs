@@ -43,10 +43,6 @@ public class PacketBuilder
         {
             Buffer.BlockCopy(data, 0, buffer, 4, data.Length);
         }
-        //if (type == PacketType.PACKET_GENERATE)
-        //{
-        //    Debug.Log($"Size: {size}, {BitConverter.ToString(data)}");
-        //}
         return buffer;
     }
 }

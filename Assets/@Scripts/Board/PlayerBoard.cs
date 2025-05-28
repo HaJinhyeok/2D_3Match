@@ -5,7 +5,6 @@ using UnityEngine.Events;
 using UnityEngine.UI;
 using System.Collections;
 using System;
-using UnityEngine.SceneManagement;
 using System.Text;
 
 public static class MouseData
@@ -16,9 +15,9 @@ public static class MouseData
 
 public class PlayerBoard : Board
 {
-    public Text CheckResultText;
-    public Button PreferenceButton;
-    public GameObject PausePanelObject;
+    [SerializeField] Text CheckResultText;
+    [SerializeField] Button PreferenceButton;
+    [SerializeField] GameObject PausePanelObject;
 
     public static Action OnGameStart;
     public static Action OnGameFinish;
@@ -36,6 +35,8 @@ public class PlayerBoard : Board
         {
             OnPreferenceButtonClick();
         }
+
+        // 타이머
         if (_isTimeFlowing)
         {
             GameManager.Instance.CurrentTime -= Time.deltaTime;
@@ -47,6 +48,7 @@ public class PlayerBoard : Board
             }
         }
 
+        // 플레이어 무응답 시간 체크 => 힌트 제공 or 보드 교체
         if (_isChecking)
         {
             _timeCount += Time.deltaTime;
@@ -77,9 +79,7 @@ public class PlayerBoard : Board
 
         if (GameManager.s_isNetworkOn)
         {
-            byte[] testData = Encoding.UTF8.GetBytes("Hello");
-            //GameManager.Client.SendMessageToServer("MATCH");
-            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST, testData);
+            byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_REQUEST);
             GameManager.Client.SendMessageToServer(clientData);
             CheckResultText = null;
         }
@@ -114,7 +114,6 @@ public class PlayerBoard : Board
     {
         // IOCP 서버 전달용 string
         string data = "";
-        //string clientData = $"{(int)Define.DataStatus.Start}\n";
         int x, y;
         for (int i = 0; i < _blocks.Length; i++)
         {
@@ -147,7 +146,6 @@ public class PlayerBoard : Board
         }
         if (GameManager.s_isNetworkOn)
         {
-            //GameManager.Client.SendMessageToServer(data);
             byte[] packetData = Encoding.UTF8.GetBytes(data);
             byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_START, packetData);
             GameManager.Client.SendMessageToServer(clientData);
@@ -156,7 +154,7 @@ public class PlayerBoard : Board
     }
 
     // 보드판 갈아엎기
-    IEnumerator ChangeAllBlockImages()
+    IEnumerator CoChangeAllBlockImages()
     {
         _isBlockMoving = true;
         for (int i = 0; i < _numOfColumn; i++)
@@ -190,13 +188,12 @@ public class PlayerBoard : Board
             StartCoroutine(CoTextVanish());
         }
         yield return new WaitForSeconds(0.5f);
-        StartCoroutine(ChangeAllBlockImages());
+        StartCoroutine(CoChangeAllBlockImages());
     }
 
     // 게임 종료 - 블록 움직임 정지, 결과 서버 전달 등
     public IEnumerator FinishGame()
     {
-        //string clientData = $"{(int)Define.DataStatus.Finish}\n{Score}";
         string data = $"{Score}";
         _isChecking = false;
         GameManager.s_isFinished = true;
@@ -267,8 +264,8 @@ public class PlayerBoard : Board
 
     #region Event
     // 이미지의 이동 범위는 상 or 하 or 좌 or 우 방향으로 한 블록까지만
-    // 드래그 종료 시, 종료 지점 블록과 이미지 교환(혹은 해당 열이나 행 블록 밀어내기)
-    // 이미지 교환 발생 시, 게임보드 전체 순환하며 사라질 블록 있는지 체크 -> 교환 발생한 블록만 체크
+    // 드래그 종료 시, 종료 지점 블록과 이미지 교환
+    // 이미지 교환 발생 시, 게임보드 전체 순환하며 사라질 블록 있는지 체크 -> 교환 발생한 블록만 체크 v
     // 캔디크러쉬사가: 드래그 시작 후, 상하좌우 중 하나의 타일 영역으로 드래그하는 순간 교환 발생 v
     // 애니팡: 드래그 시작된 방향으로 바로 교환 발생
 
@@ -576,16 +573,13 @@ public class PlayerBoard : Board
             return false;
         foreach (List<int> matchBlocks in matches)
         {
-            //string clientData = $"{(int)Define.DataStatus.Destroy}\n";
             string data = "";
             for (int i = 0; i < matchBlocks.Count; i++)
             {
                 if (i != 0)
                 {
-                    //clientData += ' ';
                     data += ' ';
                 }
-                //clientData += matchBlocks[i].ToString();
                 data += matchBlocks[i].ToString();
             }
             if (GameManager.s_isNetworkOn)
@@ -594,7 +588,6 @@ public class PlayerBoard : Board
                 byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_DESTROY, packetData);
                 GameManager.Client.SendMessageToServer(clientData);
             }
-            //clientData = "";
             data = "";
             DestroyMatchBlocks(matchBlocks);
         }
@@ -648,16 +641,13 @@ public class PlayerBoard : Board
             return false;
         foreach (List<int> matchBlocks in matches)
         {
-            //string clientData = $"{(int)Define.DataStatus.Destroy}\n";
             string data = "";
             for (int i = 0; i < matchBlocks.Count; i++)
             {
                 if (i != 0)
                 {
-                    //clientData += ' ';
                     data += ' ';
                 }
-                //clientData += matchBlocks[i].ToString();
                 data += matchBlocks[i].ToString();
             }
             if (GameManager.s_isNetworkOn)
@@ -685,7 +675,6 @@ public class PlayerBoard : Board
         // 새로 생성될 블록을 포함하여 밑으로 이동될 블록들
         List<List<GameObject>> movingBlocks = new List<List<GameObject>>();
         string hideData = "";
-        //string hideBlockData = $"{(int)Define.DataStatus.Hide}\n";
 
         // 각 column에서 어느 자리의 블록이 비었는지 확인
         // 새로 생성해야할 블록 개수 == 빈 블록 개수
@@ -713,16 +702,18 @@ public class PlayerBoard : Board
                         GameObject block = new GameObject($"{movingBlocks[j].Count}_th block of {j}_th column");
                         block.transform.SetParent(transform);
                         block.AddComponent<Dummy>();
+
                         RectTransform rect = block.AddComponent<RectTransform>();
                         rect.sizeDelta = _size - _space;
                         rect.localScale = Vector3.one;
                         rect.localEulerAngles = Vector3.zero;
                         rect.localPosition = _blocks[i, j].gameObject.transform.localPosition;
+
                         Image image1 = block.AddComponent<Image>();
                         image1.sprite = _blocks[i, j].BlockImage.sprite;
+
                         movingBlocks[j].Add(block);
                         _blocks[i, j].TurnOffBlock();
-                        //hideBlockData += $"{i},{j} ";
                         hideData += $"{i},{j} ";
                     }
                 }
@@ -761,7 +752,6 @@ public class PlayerBoard : Board
         }
         else
         {
-            //string clientData = $"{(int)Define.DataStatus.Generate}\n";
             string data = "";
             foreach (List<GameObject> gameObjects in movingBlocks)
             {
@@ -770,18 +760,17 @@ public class PlayerBoard : Board
                     string name = go.GetComponent<Image>().sprite.name;
                     Vector2 pos = go.GetComponent<RectTransform>().localPosition;
                     // 이미지 번호 - 위치 x좌표 - 위치 y좌표
-                    //clientData += $"{name[0]} {pos.x} {pos.y}";
-                    data += $"{name[0]} {pos.x} {pos.y}";
+                    int index = Array.IndexOf(GameManager.Instance.BlockImages, go.GetComponent<Image>().sprite);
+                    data += $"{index} {pos.x} {pos.y}";
+
                     // 배열의 마지막 요소를 가리키는 인덱스 표기법
                     if (go != gameObjects[^1])
                     {
-                        //clientData += ',';
                         data += ',';
                     }
                 }
                 if (gameObjects != movingBlocks[^1])
                 {
-                    //clientData += '\n';
                     data += '\n';
                 }
             }
@@ -793,72 +782,12 @@ public class PlayerBoard : Board
 
                 byte[] packetData = Encoding.UTF8.GetBytes(data);
                 byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_GENERATE, packetData);
-                Debug.Log($"[SEND] GENERATE size={data.Length}\n packetData size={packetData.Length}\nclientData size={clientData.Length}");
-                Debug.Log(BitConverter.ToString(clientData));
 
                 GameManager.Client.SendMessageToServer(clientData);
             }
             // 블록들 밑으로 내려주기
             yield return StartCoroutine(CoMoveBlocks(movingBlocks));
         }
-    }
-    #endregion
-
-    #region Test Code
-    public void OnCheckButtonClick()
-    {
-        Color color = CheckResultText.color;
-        color.a = 1f;
-        CheckResultText.color = color;
-        if (Is3MatchPossible())
-        {
-            CheckResultText.text = Define.PossibleText;
-        }
-        else
-        {
-            CheckResultText.text = Define.ImpossibleText;
-        }
-        StartCoroutine(CoTextVanish());
-    }
-    public void OnChangeButtonClick()
-    {
-        StartCoroutine(CoChangeAllBlocks());
-    }
-
-    public void OnTestButtonClick()
-    {
-        string test = "match idices\n";
-        List<List<int>> matches = CheckMatches();
-        foreach (List<int> matchBlocks in matches)
-        {
-            foreach (int idx in matchBlocks)
-            {
-                test += $"{idx} ";
-            }
-            test += "\n";
-        }
-        Debug.Log(test);
-    }
-
-    public void OnRemoveButtonClick()
-    {
-        DestroyBlocks();
-    }
-
-    public void OnMakeButtonClick()
-    {
-        MakeBlocks();
-    }
-
-    public void PrintList(List<int> list)
-    {
-        string print = "Match: ";
-        for (int i = 0; i < list.Count; i++)
-        {
-            print += list[i].ToString();
-            print += " ";
-        }
-        Debug.Log(print);
     }
     #endregion
 }

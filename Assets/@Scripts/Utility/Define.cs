@@ -7,24 +7,8 @@ public static class Define
     public const string address = "127.0.0.1";
     #endregion
 
-    public enum DataStatus : int
-    {
-        // 게임 플레이 관련
-        Start,
-        Swap,
-        Destroy,
-        Generate,
-        Hide,
-        Result,
-
-        // 게임 종료 관련
-        Finish,
-        RivalConnectionClosed,
-        ExitMatch,
-    };
-
     #region Constants
-    public const float TimeLimit = 15f;
+    public const float TimeLimit = 60f;
     #endregion
 
     #region Path

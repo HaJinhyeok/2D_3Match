@@ -5,8 +5,9 @@ using UnityEngine.UI;
 
 public class PausePanel : MonoBehaviour
 {
-    public Button ExitButton;
-    public Button ContinueButton;
+    [SerializeField] Button ExitButton;
+    [SerializeField] Button ContinueButton;
+
     public static Action OnPauseOff;
 
     void Start()
@@ -28,7 +29,6 @@ public class PausePanel : MonoBehaviour
         // 매치 게임 중이면
         if(GameManager.s_isNetworkOn)
         {
-            //GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
             GameManager.Client.SendMessageToServer(PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_EXIT));
             GameManager.s_isNetworkOn = false;
         }

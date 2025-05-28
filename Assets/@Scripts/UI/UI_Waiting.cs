@@ -1,13 +1,12 @@
 using System;
-using System.Text;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class UI_Waiting : MonoBehaviour
 {
-    public Camera WaitingCamera;
-    public Button ExitButton;
+    [SerializeField] Camera WaitingCamera;
+    [SerializeField] Button ExitButton;
+
     public static Action<bool> OnWaitingAction;
 
     private void Awake()
@@ -32,7 +31,6 @@ public class UI_Waiting : MonoBehaviour
     {
         byte[] clientData = PacketBuilder.BuildPacketData(PacketType.PACKET_MATCH_EXIT);
         GameManager.Client.SendMessageToServer(clientData);
-        //GameManager.Client.SendMessageToServer($"{(int)Define.DataStatus.ExitMatch}");
         GameManager.s_isNetworkOn = false;
     }
 }

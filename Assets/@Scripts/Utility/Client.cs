@@ -34,30 +34,37 @@ public class Client : MonoBehaviour
 
     void RecvData()
     {
-        byte[] buffer = new byte[1024];
         try
         {
             while (true)
             {
-                int bytes = networkStream.Read(buffer, 0, buffer.Length);
-                if (bytes <= 0)
+                // byte 데이터 읽다가 짤릴 수 있으므로 다 읽을 때까지 확이 작업
+                byte[] headerBuffer = new byte[4];
+                int headerRead = 0;
+                while (headerRead < 4)
                 {
-                    Debug.LogWarning("Server disconnected.");
-                    break;
+                    int read = networkStream.Read(headerBuffer, headerRead, 4 - headerRead);
+                    if (read <= 0) throw new Exception("Server disconnected.");
+                    headerRead += read;
                 }
 
-                ushort size = BitConverter.ToUInt16(buffer, 0);
-                ushort type = BitConverter.ToUInt16(buffer, 2);
+                ushort size = BitConverter.ToUInt16(headerBuffer, 0);
+                ushort type = BitConverter.ToUInt16(headerBuffer, 2);
                 string data = "";
-                if (bytes > 4)
+                if (size > 4)
                 {
-                    data = Encoding.UTF8.GetString(buffer, 4, size - 4);
-                    if ((PacketType)type == PacketType.PACKET_GENERATE)
+                    byte[] bodyBuffer = new byte[size - 4];
+                    int bodyRead = 0;
+                    while (bodyRead < bodyBuffer.Length)
                     {
-                        Debug.Log($"[{(PacketType)type}]");
-                        Debug.Log($"data: {data}");
+                        int read = networkStream.Read(bodyBuffer, bodyRead, bodyBuffer.Length - bodyRead);
+                        if (read <= 0) throw new Exception("No data");
+                        bodyRead += read;
                     }
+                    data = Encoding.UTF8.GetString(bodyBuffer);
+                    Debug.Log($"[RECV] PacketType: {(PacketType)type}, Size: {size}, Payload Length: {data.Length}");
                 }
+
 
                 switch ((PacketType)type)
                 {
@@ -65,30 +72,25 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_MATCH_WAITING:
-                        //Debug.Log("Waiting...");
                         ClientReceiveProcessor.Enqueue(() =>
                         UI_Waiting.OnWaitingAction?.Invoke(true));
                         break;
 
                     case PacketType.PACKET_MATCH_COMPLETE:
-                        //Debug.Log("Match Completed!");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             UI_Waiting.OnWaitingAction?.Invoke(false);
                             GameManager.Instance.Player.GameStart();
-                            //GameManager.Instance.Player.Name = messages[1];
                             GameManager.Instance.Rival.Name = data;
                         });
                         break;
 
                     case PacketType.PACKET_MATCH_START:
-                        //Debug.Log("START");
                         ClientReceiveProcessor.Enqueue(() =>
                         GameManager.Instance.Rival.StartGame(data));
                         break;
 
                     case PacketType.PACKET_MATCH_FINISH:
-                        //Debug.Log("FINISH");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.GameStatus.IsRivalPlaying = false;
@@ -97,7 +99,6 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_MATCH_RESULT:
-                        //Debug.Log("RESULT");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.GameStatus.OnResultSetting(ushort.Parse(data));
@@ -106,7 +107,6 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_MATCH_EXIT:
-                        //Debug.Log("EXIT");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.IsPaused = false;
@@ -115,7 +115,6 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_RESULT_WIN:
-                        //Debug.Log("WIN");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.GameStatus.OnResultSetting(type);
@@ -124,7 +123,6 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_RESULT_LOSE:
-                        //Debug.Log("LOSE");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.GameStatus.OnResultSetting(type);
@@ -133,7 +131,6 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_RESULT_DRAW:
-                        //Debug.Log("DRAW");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             GameManager.Instance.GameStatus.OnResultSetting(type);
@@ -143,32 +140,28 @@ public class Client : MonoBehaviour
 
                     // 인게임 블록 이동 정보
                     case PacketType.PACKET_SWAP:
-                        //Debug.Log("SWAP");
                         ClientReceiveProcessor.Enqueue(() =>
                         StartCoroutine(GameManager.Instance.Rival.SwapBlock(data)));
                         break;
 
                     case PacketType.PACKET_DESTROY:
-                        //Debug.Log("DESTROY");
                         ClientReceiveProcessor.Enqueue(() =>
                             GameManager.Instance.Rival.DestroyBlock(data));
                         break;
 
                     case PacketType.PACKET_GENERATE:
-                        Debug.Log("GENERATE");
                         ClientReceiveProcessor.Enqueue(() =>
                         GameManager.Instance.Rival.GenerateBlock(data));
                         break;
 
                     case PacketType.PACKET_HIDE:
-                        //Debug.Log("HIDE");
                         ClientReceiveProcessor.Enqueue(() =>
                         GameManager.Instance.Rival.HideBlock(data));
                         break;
 
                     // 에러 및 예외처리
                     case PacketType.PACKET_ERR_FULL:
-                        //Debug.Log("Match is already ongoing...");
+                        Debug.Log("Match is already ongoing...");
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             SceneManager.LoadScene(Define.MainScene);
@@ -177,7 +170,7 @@ public class Client : MonoBehaviour
                         break;
 
                     case PacketType.PACKET_ERR_DISCONNECTION:
-                        //Debug.Log(Define.RivalConnectionFailText);
+                        Debug.Log(Define.RivalConnectionFailText);
                         ClientReceiveProcessor.Enqueue(() =>
                         {
                             PlayerBoard.OnRivalConnectionError?.Invoke();
@@ -185,97 +178,6 @@ public class Client : MonoBehaviour
                         });
                         break;
                 }
-
-
-                //string msg = Encoding.UTF8.GetString(buffer, 0, bytes);
-                //string[] messages = msg.Split(' ');
-                //if (messages[0] == "MATCHED")
-                //{
-                //    Debug.Log("Matching Success!!!");
-                //    ClientReceiveProcessor.Enqueue(() =>
-                //    {
-                //        UI_Waiting.OnWaitingAction?.Invoke(false);
-                //        GameManager.Instance.Player.GameStart();
-                //        GameManager.Instance.Player.Name = messages[1];
-                //        GameManager.Instance.Rival.Name = messages[2];
-                //    });
-                //}
-                //else if (messages[0] == "WAITING")
-                //{
-                //    Debug.Log("Waiting...");
-                //    ClientReceiveProcessor.Enqueue(() =>
-                //    UI_Waiting.OnWaitingAction?.Invoke(true));
-                //}
-                //else if (messages[0] == "MATCH_FULL")
-                //{
-                //    Debug.Log("Match is already ongoing...");
-                //    ClientReceiveProcessor.Enqueue(() =>
-                //    {
-                //        SceneManager.LoadScene(Define.MainScene);
-                //        GameManager.s_isNetworkOn = false;
-                //    });
-                //}
-                //else if (messages[0] == Define.RivalConnectionError)
-                //{
-                //    Debug.Log(Define.RivalConnectionFailText);
-                //    ClientReceiveProcessor.Enqueue(() =>
-                //    {
-                //        PlayerBoard.OnRivalConnectionError?.Invoke();
-                //        GameManager.Instance.Rival.FinishGame();
-                //    });
-                //}
-                //else
-                //{
-                //    int status = (int)msg[0] - 48;
-                //    switch (status)
-                //    {
-                //        case (int)Define.DataStatus.Start:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            GameManager.Instance.Rival.StartGame(msg.Substring(2)));
-
-                //            break;
-
-                //        case (int)Define.DataStatus.Swap:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            StartCoroutine(GameManager.Instance.Rival.SwapBlock(msg.Substring(2))));
-                //            break;
-
-                //        case (int)Define.DataStatus.Destroy:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //                GameManager.Instance.Rival.DestroyBlock(msg.Substring(2)));
-                //            break;
-
-                //        case (int)Define.DataStatus.Generate:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            GameManager.Instance.Rival.GenerateBlock(msg.Substring(2)));
-                //            break;
-
-                //        case (int)Define.DataStatus.Hide:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            GameManager.Instance.Rival.HideBlock(msg.Substring(2)));
-                //            break;
-
-                //        case (int)Define.DataStatus.Result:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            {
-                //                GameManager.Instance.GameStatus.OnResultSetting(msg[2] - '0');
-                //                ResultPanel.OnResultPanelOn?.Invoke();
-                //            });
-                //            break;
-
-                //        case (int)Define.DataStatus.Finish:
-                //            ClientReceiveProcessor.Enqueue(() =>
-                //            {
-                //                GameManager.Instance.GameStatus.IsRivalPlaying = false;
-                //                GameManager.Instance.GameStatus.RivalScore = int.Parse(msg.Substring(2));
-                //            });
-                //            break;
-
-                //        default:
-                //            break;
-                //    }
-                //}
-
             }
         }
         catch (Exception e)
@@ -289,24 +191,13 @@ public class Client : MonoBehaviour
         }
     }
 
-    //public void SendMessageToServer(string msg)
-    //{
-    //    if (networkStream == null || !networkStream.CanWrite)
-    //        return;
-
-    //    byte[] data = Encoding.UTF8.GetBytes(msg);
-    //    networkStream.Write(data, 0, data.Length);
-    //}
-
     public void SendMessageToServer(byte[] data)
     {
         if (networkStream == null || !networkStream.CanWrite)
             return;
         try
         {
-            //Debug.Log("Sending Packet: " + BitConverter.ToString(data));
             networkStream.Write(data, 0, data.Length);
-            //Debug.Log("Packet sent");
         }
         catch (Exception e)
         {
